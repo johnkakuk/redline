@@ -7,10 +7,11 @@ import * as exercises from './repos/exercises.repo';
 import * as programs from './repos/programs.repo';
 import * as routines from './repos/routines.repo';
 import * as settings from './repos/settings.repo';
+import * as sync from './repos/sync.repo';
 import * as workouts from './repos/workouts.repo';
 import type { Db } from './sqlite';
 
-const modules = { analytics, body, data, exercises, programs, routines, settings, workouts };
+const modules = { analytics, body, data, exercises, programs, routines, settings, sync, workouts };
 
 type Bound<M> = {
   [K in keyof M as M[K] extends (db: Db, ...a: never[]) => unknown ? K : never]: M[K] extends (db: Db, ...a: infer A) => infer R
@@ -34,6 +35,7 @@ const BOUND_SKIP = new Set(['DEFAULT_INCREMENTS', 'availableEquipment', 'profile
 export function createApi(db: Db, info: Omit<BootInfo, 'schemaVersion' | 'seeded'>): DbApi {
   const schemaVersion = migrate(db);
   settings.ensureSettings(db);
+  exercises.normalizeSeedIds(db);
   const seeded = exercises.seedExercises(db);
   const api: Record<string, unknown> = {};
   for (const mod of Object.values(modules)) {

@@ -35,13 +35,18 @@ beforeEach(() => {
 
 describe('boot', () => {
   it('migrates, seeds ~100 exercises with linked variation chains', () => {
-    expect(api.boot().schemaVersion).toBe(2);
+    expect(api.boot().schemaVersion).toBe(3);
     expect(api.listExercises().length).toBeGreaterThan(80);
     const push = ex('Push-up');
     expect(push.harder_variation_id).toBe(ex('Decline Push-up').id);
     expect(ex('Decline Push-up').easier_variation_id).toBe(push.id);
     expect(asLb(ex('DB Bench Press').default_increment_kg)).toBe(5);
     expect(asLb(ex('Lat Pulldown').default_increment_kg)).toBe(10);
+  });
+
+  it('seeded exercises have the same ids on every install; old random ids are remapped', () => {
+    expect(ex('Push-up').id).toBe('seed-push-up');
+    expect(fresh().findExerciseByName('DB Bench Press')!.id).toBe(ex('DB Bench Press').id);
   });
 
   it('seeding is idempotent', () => {
@@ -392,6 +397,31 @@ describe('body', () => {
     api.upsertNutrition('2026-10-02', { calories: 2400 });
     api.upsertNutrition('2026-10-02', { protein_g: 180 });
     expect(api.getNutrition('2026-10-02')).toMatchObject({ calories: 2400, protein_g: 180 });
+  });
+});
+
+describe('sync bookkeeping', () => {
+  it('pushes everything once, then only what changed; imports and resets behave', async () => {
+    await new Promise((r) => setTimeout(r, 5)); // rows from the current millisecond wait for the next sync
+    const first = api.changesSince();
+    expect(first.count).toBe(1 + api.listExercises({ includeArchived: true }).length); // settings + seeded exercises
+    expect(Object.keys(first.tables)).toEqual(['settings', 'exercises']);
+    api.setSyncState({ user_id: 'u1', pushed_until: first.until });
+    expect(api.pendingSyncCount()).toBe(0);
+    await new Promise((r) => setTimeout(r, 5));
+    api.logBodyweight({ date: '2026-10-01', weight_kg: 80 });
+    api.saveExercise({ ...ex('Push-up'), notes: 'elbows in' });
+    await new Promise((r) => setTimeout(r, 5));
+    const next = api.changesSince();
+    expect(next.count).toBe(2);
+    expect(next.tables.body_weight).toHaveLength(1);
+    expect(next.tables.exercises[0].notes).toBe('elbows in');
+    expect(api.changesSince().count).toBe(2); // watermark only moves when the app confirms the push
+    api.setSyncState({ pushed_until: next.until });
+    api.importAll(JSON.parse(JSON.stringify(api.exportAll())), 'merge');
+    expect(api.getSyncState().pushed_until).toBe('');
+    api.resetApp();
+    expect(api.getSyncState().user_id).toBeNull();
   });
 });
 

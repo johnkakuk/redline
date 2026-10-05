@@ -60,6 +60,7 @@ export function Onboarding() {
               ))}
             </div>
             <p className="caption" style={{ marginTop: 12 }}>You can switch any time. Everything is stored precisely either way.</p>
+            <p className="caption" style={{ marginTop: 24 }}>Have an invite? <button type="button" className="red" onClick={() => nav('/login')}>Log in</button> to restore your data.</p>
           </div>
         )}
 

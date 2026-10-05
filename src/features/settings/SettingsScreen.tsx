@@ -11,6 +11,7 @@ import { KeypadSheet, type KeypadField } from '../../ui/Keypad';
 import { Term } from '../../ui/InfoTip';
 import { Badge, Button, ListRow, Segmented, Stepper } from '../../ui/primitives';
 import { EquipmentEditor, StarterProgramSheet } from '../onboarding/equipment';
+import { CloudSection } from './CloudSection';
 import { Screen } from '../../ui/Screen';
 import { Sheet } from '../../ui/Sheet';
 import { toast, toastError } from '../../ui/toast';
@@ -182,6 +183,8 @@ export function SettingsScreen() {
           ))}
         </div>
       </div>
+
+      <CloudSection />
 
       <div className="section">
         <div className="section-label"><span className="micro">Data</span></div>

@@ -103,6 +103,35 @@ export function applyEquipmentCaps(db: Db, caps: Partial<Record<Equipment, numbe
   });
 }
 
+/** Seeded exercises get the same id on every install, so data from several devices merges cleanly. */
+export const seedId = (name: string) => `seed-${name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')}`;
+
+/** One-time: move seeded exercises created with random ids onto their deterministic ids. */
+export function normalizeSeedIds(db: Db): number {
+  const rows = db.all<{ id: string; name: string }>(`SELECT id, name FROM exercises WHERE is_seeded = 1 AND id NOT LIKE 'seed-%'`);
+  if (!rows.length) return 0;
+  let moved = 0;
+  db.exec('PRAGMA foreign_keys = OFF');
+  try {
+    db.tx(() => {
+      for (const r of rows) {
+        const nid = seedId(r.name);
+        if (db.get('SELECT 1 FROM exercises WHERE id = ?', [nid])) continue;
+        db.run('UPDATE exercises SET id = ? WHERE id = ?', [nid, r.id]);
+        db.run('UPDATE exercises SET harder_variation_id = ? WHERE harder_variation_id = ?', [nid, r.id]);
+        db.run('UPDATE exercises SET easier_variation_id = ? WHERE easier_variation_id = ?', [nid, r.id]);
+        for (const t of ['routine_items', 'workout_exercises', 'personal_records']) {
+          db.run(`UPDATE ${t} SET exercise_id = ? WHERE exercise_id = ?`, [nid, r.id]);
+        }
+        moved++;
+      }
+    });
+  } finally {
+    db.exec('PRAGMA foreign_keys = ON');
+  }
+  return moved;
+}
+
 interface SeedRow {
   name: string; equipment: Equipment; load_type: Exercise['load_type']; primary_muscle: Muscle;
   secondary_muscles: Muscle[]; harder: string | null; default_rest_sec: number | null; notes: string | null;
@@ -118,7 +147,7 @@ export function seedExercises(db: Db): number {
     for (const r of rows) {
       const existing = findExerciseByName(db, r.name);
       if (existing) { ids.set(r.name, existing.id); continue; }
-      const id = newId();
+      const id = seedId(r.name);
       ids.set(r.name, id);
       db.run(
         `INSERT INTO exercises (id, name, primary_muscle, secondary_muscles, equipment, load_type, default_increment_kg,

@@ -2,7 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import { ArrowUpDown, Ellipsis, Plus, StickyNote, Trash2 } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { Navigate, useNavigate } from 'react-router-dom';
-import { act, queryClient, useActiveWorkoutId, useUnits } from '../../app/queries';
+import { act, notifyWrite, queryClient, useActiveWorkoutId, useUnits } from '../../app/queries';
 import { db } from '../../db/client';
 import { fmtDay, fmtDuration } from '../../shared/time';
 import type { WorkoutExerciseFull, WorkoutFull, WorkoutSet } from '../../shared/types';
@@ -86,6 +86,7 @@ function LiveWorkout({ w }: { w: WorkoutFull }) {
     } catch (e) {
       toastError(e);
     }
+    notifyWrite();
     void refresh();
   };
 
@@ -158,6 +159,7 @@ function LiveWorkout({ w }: { w: WorkoutFull }) {
       // Leave first: once queries refresh there is no active workout and this screen would redirect home.
       nav(`/workout/${w.id}/summary`, { replace: true });
       void queryClient.invalidateQueries();
+      notifyWrite();
     } catch (e) {
       if (e instanceof Error && /No sets/.test(e.message)) setConfirm('empty');
       else toastError(e);

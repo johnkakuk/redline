@@ -36,7 +36,7 @@ async function createRoutine(page: Page, name: string, exercise: string) {
   await page.getByRole('button', { name: new RegExp(`^${exercise}`) }).first().click();
   await page.getByRole('button', { name: /^Add \(1\)/ }).click();
   await page.getByRole('button', { name: 'Save' }).click();
-  await expect(page).toHaveURL(/#\/routines$/);
+  await expect(page).toHaveURL(/\/routines$/);
 }
 
 /** Log every working set of the first exercise as weight × reps via the keypad, then tick them all. */
@@ -66,7 +66,7 @@ test('core loop: routine → workout → finish → next session progresses and 
 
   await page.getByRole('link', { name: 'Today' }).click();
   await page.getByRole('button', { name: 'Start workout' }).click();
-  await expect(page).toHaveURL(/#\/workout$/);
+  await expect(page).toHaveURL(/\/workout$/);
   await expect(page.getByText('3 × 8–12 · cap 50')).toBeVisible();
 
   await logAll(page, '45', '12');
@@ -80,7 +80,7 @@ test('core loop: routine → workout → finish → next session progresses and 
   // Trained days on the week strip open that day's workout; other days aren't buttons.
   await expect(page.locator('.week button.day')).toHaveCount(1);
   await page.getByRole('button', { name: /trained, view workout/ }).click();
-  await expect(page).toHaveURL(/#\/history\//);
+  await expect(page).toHaveURL(/\/history\//);
   await expect(page.getByRole('heading', { name: 'Push A' })).toBeVisible();
   await page.goBack();
 
@@ -150,11 +150,11 @@ test('data survives closing and reopening the app (OPFS)', async () => {
 
   let { ctx, page } = await open();
   await page.goto('/');
-  await page.waitForFunction(() => location.hash.includes('onboarding') || !!document.querySelector('h1'));
+  await page.waitForFunction(() => location.pathname.includes('onboarding') || !!document.querySelector('h1'));
   await expect(page.locator('.banner')).toHaveCount(0); // real storage, not the memory fallback
   if (!page.url().includes('onboarding')) {
     // OPFS is per origin, so clear anything left by an earlier run.
-    await page.goto('/#/settings');
+    await page.goto("/settings");
     await page.getByRole('button', { name: 'Reset app' }).click();
     await page.getByLabel('Type RESET to confirm').fill('RESET');
     await page.getByRole('button', { name: 'Delete everything' }).click();
@@ -172,4 +172,16 @@ test('data survives closing and reopening the app (OPFS)', async () => {
   await expect(page.getByRole('heading', { name: 'Today' })).toBeVisible();
   await expect(page.locator('.quick').getByText('182.5')).toBeVisible();
   await ctx.close();
+});
+
+test('login is optional and lives at /login', async ({ page }) => {
+  await onboard(page);
+  await page.getByRole('link', { name: 'Settings' }).click();
+  await expect(page.getByText('Local only')).toBeVisible();
+  await page.getByRole('button', { name: /^Log in/ }).click();
+  await expect(page).toHaveURL(/\/login$/);
+  await expect(page.getByText('Accounts are invite-only')).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Email me a code' })).toBeDisabled();
+  await page.getByRole('button', { name: 'Redline' }).click();
+  await expect(page.getByRole('heading', { name: 'Today' })).toBeVisible();
 });

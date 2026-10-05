@@ -14,21 +14,37 @@ npm run build      # typecheck + production build in dist/
 
 The first `npm run e2e` needs `npx playwright install webkit chromium`.
 
-## Install on iPhone
+## Live
 
-Deploy `dist/` to any HTTPS static host on a stable origin (e.g. Cloudflare Pages: build `npm run build`, output `dist`). Open it in Safari, then Share → Add to Home Screen. Changing the origin later strands local data, so export first (Settings → Export backup).
+https://redline.john-24f.workers.dev. One Cloudflare Worker serves the PWA (static assets) and `/api`.
+
+- **`/`** is the public app. Everything lives on the device; no account needed. Share it with anyone.
+- **`/login`** is for invited accounts (email code / magic link, or password). Logged-in users get cloud backup and sync; AI features will also require login.
+
+Install: open it in Safari → Share → Add to Home Screen.
+
+## Deploy
+
+```sh
+npm run deploy                      # build + wrangler deploy
+npm run db:push                     # apply supabase/migrations to the cloud database
+npm run invite -- friend@example.com   # allow an email to create an account
+```
+
+Secrets live outside git: `.env.local` (DB password, project ref) and the Worker secret `SUPABASE_SECRET_KEY` (`wrangler secret put`). `.env` holds only the public Supabase URL and publishable key.
 
 ## How it fits together
 
 - **`src/engine/`**: pure logic with no I/O: double progression, e1RM, calories, PRs, volume, warm-ups. Fully unit-tested.
-- **`src/db/`**: SQLite (`@sqlite.org/sqlite-wasm`, `opfs-sahpool` VFS) in a dedicated worker. Repos are synchronous functions over a `Db` handle; `api.ts` binds them and the worker exposes them over Comlink. The UI calls `db.someRepoFn()` and never writes SQL. The same repos run in Node tests against in-memory SQLite.
-- **`src/features/`**: screens. TanStack Query reads; `act()` runs a write and refreshes queries. The live workout updates set rows optimistically.
-- **`src/ui/`**: design-system components on top of `src/styles/tokens.css`.
+- **`src/db/`**: SQLite (`@sqlite.org/sqlite-wasm`, `opfs-sahpool` VFS) in a dedicated worker. Repos are synchronous functions over a `Db` handle, exposed to the UI over Comlink. The same repos run in Node tests against in-memory SQLite.
+- **`src/features/`**: screens. TanStack Query reads; `act()` runs a write, refreshes queries and nudges sync.
+- **`src/sync/`, `worker/`, `supabase/`**: cloud backup for logged-in users. The phone stays the source of truth and pushes every row newer than its last push (all tables have `updated_at` triggers and soft deletes, so no outbox is needed). The Worker checks the Supabase session and calls `sync_push`, which upserts last-write-wins and forces `user_id` to the caller. Cloud tables are keyed `(user_id, id)` with RLS on and no public access. Only invited emails (`allowed_emails`) can create accounts; a database trigger enforces it. Seeded exercises have deterministic ids so devices merge cleanly.
+- On login, a fresh device takes the account's cloud copy; a device already in use pushes, then merges.
 
-Weights are stored in kg and converted at the UI edge. Every table has ULID ids, `updated_at` triggers and soft deletes, so the schema is ready for the cloud mirror (PLAN §10).
+When the SQLite schema changes, add a matching Supabase migration (new columns are otherwise dropped on push).
 
 If OPFS is unavailable (Safari private browsing, or another tab holding the database), the app runs in memory and shows a "not saving" warning.
 
 ## Not built yet
 
-Phases 9–10 (Supabase mirror and the Cloudflare Worker MCP connector for AI drafts) need your Cloudflare and Supabase projects.
+The MCP connector for AI drafts (PLAN phase 10). The `ai_drafts` table is already in place.

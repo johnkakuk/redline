@@ -5,6 +5,7 @@ import { SCHEMA_VERSION, SYNC_TABLES } from '../migrate';
 import type { Db } from '../sqlite';
 import { seedExercises } from './exercises.repo';
 import { ensureSettings, getSettings, updateSettings } from './settings.repo';
+import { clearSyncState, resetSyncWatermark } from './sync.repo';
 
 // Insert order respects foreign keys.
 const TABLE_ORDER = [
@@ -69,6 +70,8 @@ export function importAll(db: Db, json: unknown, mode: 'replace' | 'merge'): Rec
         written[t] = n;
       }
       ensureSettings(db);
+      // Imported rows keep their original updated_at, so push everything again.
+      resetSyncWatermark(db);
     });
   } finally {
     db.exec('PRAGMA foreign_keys = ON');
@@ -106,6 +109,8 @@ export function resetApp(db: Db) {
   try {
     db.tx(() => {
       for (const t of [...TABLE_ORDER].reverse()) db.run(`DELETE FROM ${t}`);
+      // A reset unpairs this device; the cloud copy is kept and can be restored after pairing again.
+      clearSyncState(db);
       ensureSettings(db);
       seedExercises(db);
     });

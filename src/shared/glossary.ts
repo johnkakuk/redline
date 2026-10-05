@@ -64,6 +64,10 @@ export const GLOSSARY = {
     title: 'Estimated calories',
     body: 'An estimate from your bodyweight, active time (long pauses removed), calorie intensity setting and, if you’ve added them, your sex, age and height. Treat it as a ballpark.',
   },
+  cloud: {
+    title: 'Cloud backup',
+    body: 'Copies your data to your own private database so a lost or reset phone isn’t a lost history. The phone stays the main copy and works fully offline; changes upload in the background when there’s a connection.',
+  },
   superset: {
     title: 'Superset',
     body: 'Two or more exercises done back to back: one set of each, then rest. Good for saving time with exercises that don’t compete for the same muscles.',

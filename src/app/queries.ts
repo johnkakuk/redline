@@ -28,10 +28,14 @@ export function useUnits() {
   };
 }
 
+/** Tell background sync that local data changed. */
+export const notifyWrite = () => window.dispatchEvent(new Event('redline:write'));
+
 /** Run a DB write, refresh every query, and surface errors as a toast. Resolves undefined on failure. */
 export async function act<T>(p: Promise<T>): Promise<T | undefined> {
   try {
     const out = await p;
+    notifyWrite();
     await queryClient.invalidateQueries();
     return out;
   } catch (e) {

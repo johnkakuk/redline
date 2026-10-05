@@ -1,8 +1,9 @@
 import { useQuery } from '@tanstack/react-query';
 import { Activity, Dumbbell, Scale, Settings as SettingsIcon, TrendingUp, TriangleAlert, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
-import { HashRouter, Navigate, NavLink, Outlet, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
+import { BrowserRouter, Navigate, NavLink, Outlet, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
 import { db } from '../db/client';
+import { LoginScreen } from '../features/account/LoginScreen';
 import { BodyScreen } from '../features/body/BodyScreen';
 import { ExerciseDetailScreen } from '../features/exercises/ExerciseDetail';
 import { ExerciseFormScreen } from '../features/exercises/ExerciseForm';
@@ -95,19 +96,20 @@ function Gate() {
     if (navigator.storage?.persist) void navigator.storage.persisted().then((p) => p || navigator.storage.persist());
   }, []);
   if (isLoading || !settings) return <div className="screen" aria-busy="true" />;
-  if (!settings.onboarded && pathname !== '/onboarding') return <Navigate to="/onboarding" replace />;
+  if (!settings.onboarded && pathname !== '/onboarding' && pathname !== '/login') return <Navigate to="/onboarding" replace />;
   return <Outlet />;
 }
 
 export function App() {
   return (
-    <HashRouter>
+    <BrowserRouter>
       <ScrollTop />
       <Toaster />
       <StorageWarning />
       <Routes>
         <Route element={<Gate />}>
           <Route path="/onboarding" element={<Onboarding />} />
+          <Route path="/login" element={<div className="app"><LoginScreen /></div>} />
           <Route path="/workout" element={<div className="app"><WorkoutScreen /></div>} />
           <Route path="/workout/:id/summary" element={<div className="app"><SummaryScreen /></div>} />
           <Route element={<TabLayout />}>
@@ -124,6 +126,6 @@ export function App() {
           </Route>
         </Route>
       </Routes>
-    </HashRouter>
+    </BrowserRouter>
   );
 }
