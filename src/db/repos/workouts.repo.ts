@@ -153,6 +153,14 @@ export function updateSet(db: Db, setId: string, patch: { weight_kg?: number | n
     (weight != null && (s.suggested_weight_kg == null || !approxEq(weight, s.suggested_weight_kg))) ||
     (reps != null && reps !== s.suggested_reps);
   db.run('UPDATE sets SET weight_kg = ?, reps = ?, overridden = ? WHERE id = ?', [weight, reps, overridden ? 1 : 0, setId]);
+  // Carry an entered weight forward to later sets that have no suggestion yet (e.g. a first session).
+  if (patch.weight_kg != null) {
+    db.run(
+      `UPDATE sets SET suggested_weight_kg = ? WHERE workout_exercise_id = ? AND kind = ? AND sort_order > ?
+       AND weight_kg IS NULL AND suggested_weight_kg IS NULL AND completed_at IS NULL AND deleted_at IS NULL`,
+      [patch.weight_kg, s.workout_exercise_id, s.kind, s.sort_order],
+    );
+  }
 }
 
 /** Complete a set (filling untouched values from the suggestion) and check for live PRs. */

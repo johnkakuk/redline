@@ -5,4 +5,3 @@ test-results
 playwright-report
 .DS_Store
 *.local
-node_modules

@@ -197,6 +197,16 @@ describe('workout loop', () => {
     expect(api.getActiveWorkout()).toBeNull();
   });
 
+  it('a weight entered on set 1 is suggested for later empty sets', () => {
+    const wid = api.startWorkout({ routineId });
+    const sets = api.getWorkout(wid).exercises[0].sets;
+    api.updateSet(sets[0].id, { weight_kg: lb(45) });
+    const after = api.getWorkout(wid).exercises[0].sets;
+    expect(after.map((s) => asLb(s.suggested_weight_kg))).toEqual([null, 45, 45]);
+    expect(api.completeSet(after[1].id).prs).toEqual([]);
+    expect(asLb(api.getWorkout(wid).exercises[0].sets[1].weight_kg)).toBe(45);
+  });
+
   it('finishing with nothing completed is refused', () => {
     const a = api.startWorkout({ routineId });
     expect(() => api.finishWorkout(a)).toThrow(/No sets/);

@@ -2,6 +2,7 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import { VitePWA } from 'vite-plugin-pwa';
+import pkg from './package.json' with { type: 'json' };
 
 export default defineConfig({
   plugins: [
@@ -30,12 +31,15 @@ export default defineConfig({
       workbox: {
         // Precache everything, including the SQLite wasm binary and fonts: the app must work fully offline.
         globPatterns: ['**/*.{js,css,html,wasm,woff2,png,svg,webmanifest}'],
+        // The opfs-sahpool VFS doesn't use these sqlite-wasm helpers.
+        globIgnores: ['**/sqlite3-worker1-*.js', '**/sqlite3-opfs-async-proxy-*.js'],
         maximumFileSizeToCacheInBytes: 8 * 1024 * 1024,
         navigateFallback: '/index.html',
       },
       devOptions: { enabled: false },
     }),
   ],
+  define: { __APP_VERSION__: JSON.stringify(pkg.version) },
   worker: { format: 'es' },
   optimizeDeps: { exclude: ['@sqlite.org/sqlite-wasm'] },
   build: { target: 'safari16' },
