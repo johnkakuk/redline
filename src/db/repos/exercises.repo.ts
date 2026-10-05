@@ -1,0 +1,126 @@
+import type { Equipment, Exercise, ExerciseInput, Muscle } from '../../shared/types';
+import seed from '../seed/exercises.json';
+import type { Bind, Db } from '../sqlite';
+import { getExerciseRow, newId, toExercise } from './common';
+import { getSettings } from './settings.repo';
+
+export interface ExerciseFilter {
+  search?: string;
+  muscle?: Muscle | null;
+  equipment?: Equipment | null;
+  includeArchived?: boolean;
+}
+
+export function listExercises(db: Db, f: ExerciseFilter = {}): Exercise[] {
+  const where = ['deleted_at IS NULL'];
+  const params: Bind = [];
+  if (!f.includeArchived) where.push('archived = 0');
+  if (f.equipment) { where.push('equipment = ?'); params.push(f.equipment); }
+  if (f.muscle) {
+    where.push(`(primary_muscle = ? OR EXISTS (SELECT 1 FROM json_each(secondary_muscles) WHERE value = ?))`);
+    params.push(f.muscle, f.muscle);
+  }
+  if (f.search?.trim()) {
+    for (const term of f.search.trim().toLowerCase().split(/\s+/)) {
+      where.push('lower(name) LIKE ?');
+      params.push(`%${term}%`);
+    }
+  }
+  return db.all(`SELECT * FROM exercises WHERE ${where.join(' AND ')} ORDER BY name COLLATE NOCASE`, params).map(toExercise);
+}
+
+export function getExercise(db: Db, id: string): Exercise {
+  return getExerciseRow(db, id);
+}
+
+export function findExerciseByName(db: Db, name: string): Exercise | null {
+  const r = db.get('SELECT * FROM exercises WHERE lower(name) = lower(?) AND deleted_at IS NULL', [name.trim()]);
+  return r ? toExercise(r) : null;
+}
+
+export function saveExercise(db: Db, input: ExerciseInput): string {
+  const name = input.name.trim();
+  if (!name) throw new Error('Name is required');
+  return db.tx(() => {
+    const id = input.id ?? newId();
+    const vals = [
+      name, input.primary_muscle, JSON.stringify(input.secondary_muscles ?? []), input.equipment, input.load_type,
+      input.default_increment_kg, input.max_load_kg, input.harder_variation_id === id ? null : input.harder_variation_id,
+      input.easier_variation_id === id ? null : input.easier_variation_id, input.default_rest_sec, input.notes?.trim() || null,
+    ];
+    if (input.id) {
+      db.run(
+        `UPDATE exercises SET name=?, primary_muscle=?, secondary_muscles=?, equipment=?, load_type=?, default_increment_kg=?,
+          max_load_kg=?, harder_variation_id=?, easier_variation_id=?, default_rest_sec=?, notes=? WHERE id=?`,
+        [...vals, id],
+      );
+    } else {
+      db.run(
+        `INSERT INTO exercises (name, primary_muscle, secondary_muscles, equipment, load_type, default_increment_kg,
+          max_load_kg, harder_variation_id, easier_variation_id, default_rest_sec, notes, id) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)`,
+        [...vals, id],
+      );
+    }
+    // Keep the chain symmetric where the other side is unset.
+    if (input.harder_variation_id && input.harder_variation_id !== id) {
+      db.run('UPDATE exercises SET easier_variation_id = ? WHERE id = ? AND easier_variation_id IS NULL', [id, input.harder_variation_id]);
+    }
+    if (input.easier_variation_id && input.easier_variation_id !== id) {
+      db.run('UPDATE exercises SET harder_variation_id = ? WHERE id = ? AND harder_variation_id IS NULL', [id, input.easier_variation_id]);
+    }
+    return id;
+  });
+}
+
+export function archiveExercise(db: Db, id: string, archived: boolean) {
+  db.run('UPDATE exercises SET archived = ? WHERE id = ?', [archived ? 1 : 0, id]);
+}
+
+/** Onboarding: "What's your heaviest dumbbell?" → cap every exercise of that equipment type. */
+export function applyEquipmentCaps(db: Db, caps: Partial<Record<Equipment, number | null>>) {
+  db.tx(() => {
+    for (const [eq, kg] of Object.entries(caps)) {
+      if (kg === undefined) continue;
+      db.run(
+        `UPDATE exercises SET max_load_kg = ? WHERE equipment = ? AND load_type != 'bodyweight' AND deleted_at IS NULL`,
+        [kg, eq],
+      );
+    }
+  });
+}
+
+interface SeedRow {
+  name: string; equipment: Equipment; load_type: Exercise['load_type']; primary_muscle: Muscle;
+  secondary_muscles: Muscle[]; harder: string | null; default_rest_sec: number | null; notes: string | null;
+}
+
+/** Insert the seeded library (idempotent by name) and link variation chains. */
+export function seedExercises(db: Db): number {
+  const s = getSettings(db);
+  const rows = seed as SeedRow[];
+  let inserted = 0;
+  db.tx(() => {
+    const ids = new Map<string, string>();
+    for (const r of rows) {
+      const existing = findExerciseByName(db, r.name);
+      if (existing) { ids.set(r.name, existing.id); continue; }
+      const id = newId();
+      ids.set(r.name, id);
+      db.run(
+        `INSERT INTO exercises (id, name, primary_muscle, secondary_muscles, equipment, load_type, default_increment_kg,
+          default_rest_sec, notes, is_seeded) VALUES (?,?,?,?,?,?,?,?,?,1)`,
+        [id, r.name, r.primary_muscle, JSON.stringify(r.secondary_muscles), r.equipment, r.load_type,
+          s.default_increment[r.equipment], r.default_rest_sec, r.notes],
+      );
+      inserted++;
+    }
+    for (const r of rows) {
+      if (!r.harder) continue;
+      const a = ids.get(r.name)!;
+      const b = ids.get(r.harder)!;
+      db.run('UPDATE exercises SET harder_variation_id = ? WHERE id = ? AND harder_variation_id IS NULL', [b, a]);
+      db.run('UPDATE exercises SET easier_variation_id = ? WHERE id = ? AND easier_variation_id IS NULL', [a, b]);
+    }
+  });
+  return inserted;
+}

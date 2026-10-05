@@ -1,0 +1,138 @@
+/* REDLINE design tokens — dark only (v1).
+   Single source of truth. Components consume these; never hard-code colors. */
+
+@font-face {
+  font-family: "Barlow Condensed";
+  src: url("/fonts/BarlowCondensed-SemiBold.woff2") format("woff2");
+  font-weight: 600; font-style: normal; font-display: swap;
+}
+@font-face {
+  font-family: "Barlow Condensed";
+  src: url("/fonts/BarlowCondensed-Bold.woff2") format("woff2");
+  font-weight: 700; font-style: normal; font-display: swap;
+}
+
+:root {
+  color-scheme: dark;
+
+  /* ── Surfaces (elevation = lighter) ── */
+  --bg-0: #0A0A0B;   /* app background, status bar */
+  --bg-1: #121214;   /* cards, tab bar */
+  --bg-2: #1A1A1D;   /* raised: inputs, set rows, sheets */
+  --bg-3: #242428;   /* pressed / selected */
+  --border-1: #2A2A2F;
+  --border-2: #3A3A40;
+  --scrim: rgba(0, 0, 0, 0.64);
+
+  /* ── Text ── */
+  --text-1: #F5F5F7; /* primary */
+  --text-2: #A1A1AA; /* secondary, labels */
+  --text-3: #74747E; /* tertiary: placeholders, suggested (untouched) values */
+  --text-on-red: #FFFFFF;
+
+  /* ── Brand red ── */
+  --red-300: #FF6B78;
+  --red-400: #FF4757;  /* red text, icons, chart lines on dark */
+  --red-500: #E5162A;  /* primary fills: buttons, active tab, rails */
+  --red-600: #B80F20;  /* pressed */
+  --red-800: #4A0910;
+  --red-tint: rgba(229, 22, 42, 0.14);  /* selected backgrounds, badges */
+  --red-glow: 0 0 24px rgba(229, 22, 42, 0.35);
+
+  /* ── Semantic (red is brand, so states lean on icon + label, not color alone) ── */
+  --success: #30D158;      /* progressing ↑, completed check */
+  --success-tint: rgba(48, 209, 88, 0.14);
+  --warning: #FFB224;      /* holding, deload suggested */
+  --warning-tint: rgba(255, 178, 36, 0.14);
+  --danger: var(--red-400);/* destructive + errors: always paired with icon/text */
+  --pr: #F5C542;           /* personal records */
+  --pr-tint: rgba(245, 197, 66, 0.14);
+  --capped: #A1A1AA;       /* capped lift (equipment max) */
+  --info: #64A8FF;         /* AI drafts, sync status */
+  --info-tint: rgba(100, 168, 255, 0.14);
+
+  /* ── Data viz ── */
+  --viz-primary: var(--red-400);     /* "you / this lift" series */
+  --viz-secondary: #8E8E98;          /* comparison / previous period */
+  --viz-grid: #222226;
+  --viz-band: rgba(255, 255, 255, 0.05); /* target zones, e.g. 10–20 sets */
+  --heat-0: #1A1A1D;
+  --heat-1: #4A0910;
+  --heat-2: #8A0E1C;
+  --heat-3: #C9142A;
+  --heat-4: #FF4757;
+
+  /* ── Type ── */
+  --font-ui: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Inter", system-ui, sans-serif;
+  --font-num: "Barlow Condensed", "SF Pro Display", -apple-system, sans-serif;
+
+  --fs-display: 56px;  /* hero numbers: rest timer, big stats */  --lh-display: 1;
+  --fs-num-lg: 34px;   /* stat tiles */                            --lh-num-lg: 1.05;
+  --fs-title: 28px;    /* screen titles */                         --lh-title: 1.15;
+  --fs-heading: 20px;  /* card/exercise names */                   --lh-heading: 1.25;
+  --fs-body: 17px;     /* iOS default body */                      --lh-body: 1.4;
+  --fs-callout: 15px;                                              --lh-callout: 1.35;
+  --fs-caption: 13px;                                              --lh-caption: 1.3;
+  --fs-micro: 11px;    /* uppercase labels, column headers */      --lh-micro: 1.2;
+  --tracking-micro: 0.08em;
+  --tracking-display: -0.01em;
+
+  --fw-regular: 400;
+  --fw-medium: 500;
+  --fw-semibold: 600;
+  --fw-bold: 700;
+
+  /* ── Space (4pt grid) ── */
+  --s-1: 4px;  --s-2: 8px;  --s-3: 12px; --s-4: 16px;
+  --s-5: 20px; --s-6: 24px; --s-8: 32px; --s-10: 40px; --s-12: 48px;
+  --gutter: 16px;
+
+  /* ── Radius ── */
+  --r-sm: 8px;   /* chips, inputs */
+  --r-md: 12px;  /* set rows, buttons */
+  --r-lg: 16px;  /* cards */
+  --r-xl: 24px;  /* sheets */
+  --r-pill: 999px;
+
+  /* ── Sizing ── */
+  --tap-min: 44px;
+  --row-set: 56px;
+  --btn-h: 52px;
+  --btn-h-sm: 36px;
+  --tabbar-h: 56px;  /* + safe-area-inset-bottom */
+
+  /* ── Motion ── */
+  --ease-out: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --dur-fast: 120ms;
+  --dur-base: 200ms;
+  --dur-slow: 320ms;
+
+  /* ── Elevation ── */
+  --shadow-sheet: 0 -8px 32px rgba(0, 0, 0, 0.5);
+  --shadow-card: 0 1px 0 rgba(255, 255, 255, 0.03) inset;
+
+  /* ── Safe areas ── */
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root { --dur-fast: 0ms; --dur-base: 0ms; --dur-slow: 0ms; }
+}
+
+/* Base */
+html, body {
+  background: var(--bg-0);
+  color: var(--text-1);
+  font-family: var(--font-ui);
+  font-size: var(--fs-body);
+  line-height: var(--lh-body);
+  -webkit-font-smoothing: antialiased;
+  -webkit-tap-highlight-color: transparent;
+  overscroll-behavior: none;
+}
+.num { font-family: var(--font-num); font-variant-numeric: tabular-nums; font-weight: var(--fw-semibold); }
+.micro { font-size: var(--fs-micro); letter-spacing: var(--tracking-micro); text-transform: uppercase; font-weight: var(--fw-semibold); color: var(--text-2); }
+input, select, textarea { font-size: max(16px, 1em); } /* prevent iOS zoom */
+:focus-visible { outline: 2px solid var(--red-400); outline-offset: 2px; }

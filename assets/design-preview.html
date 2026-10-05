@@ -1,0 +1,291 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>REDLINE Design System</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg-0:#0A0A0B;--bg-1:#121214;--bg-2:#1A1A1D;--bg-3:#242428;--border-1:#2A2A2F;--border-2:#3A3A40;
+  --text-1:#F5F5F7;--text-2:#A1A1AA;--text-3:#74747E;
+  --red-300:#FF6B78;--red-400:#FF4757;--red-500:#E5162A;--red-600:#B80F20;--red-800:#4A0910;--red-tint:rgba(229,22,42,.14);
+  --success:#30D158;--success-tint:rgba(48,209,88,.14);--warning:#FFB224;--warning-tint:rgba(255,178,36,.14);
+  --pr:#F5C542;--pr-tint:rgba(245,197,66,.14);--info:#64A8FF;--info-tint:rgba(100,168,255,.14);--capped:#A1A1AA;
+  --viz-grid:#222226;--heat-0:#1A1A1D;--heat-1:#4A0910;--heat-2:#8A0E1C;--heat-3:#C9142A;--heat-4:#FF4757;
+  --ui:-apple-system,BlinkMacSystemFont,"SF Pro Text","Inter",system-ui,sans-serif;--num:"Barlow Condensed",-apple-system,sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#050506;color:var(--text-1);font-family:var(--ui);font-size:15px;line-height:1.4;-webkit-font-smoothing:antialiased;padding:48px 16px 80px}
+.wrap{max-width:1180px;margin:0 auto}
+.num{font-family:var(--num);font-variant-numeric:tabular-nums;font-weight:600}
+.micro{font-size:11px;letter-spacing:.08em;text-transform:uppercase;font-weight:600;color:var(--text-2)}
+h1{font-family:var(--num);font-weight:700;font-size:64px;letter-spacing:-.01em;line-height:1}
+h1 span{color:var(--red-500)}
+.lede{color:var(--text-2);max-width:560px;margin-top:12px}
+section{margin-top:64px}
+h2{font-size:13px;letter-spacing:.08em;text-transform:uppercase;color:var(--text-2);font-weight:600;margin-bottom:20px;border-bottom:1px solid var(--border-1);padding-bottom:10px}
+.swatches{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:12px}
+.sw{border-radius:12px;overflow:hidden;background:var(--bg-1);border:1px solid var(--border-1)}
+.sw i{display:block;height:64px}
+.sw div{padding:8px 10px;font-size:12px}
+.sw b{display:block;font-weight:600;font-size:12px}
+.sw span{color:var(--text-2);font-family:ui-monospace,monospace;font-size:11px}
+.typerow{display:flex;align-items:baseline;gap:24px;padding:12px 0;border-bottom:1px solid var(--border-1)}
+.typerow .micro{width:150px;flex:none}
+.phones{display:flex;gap:28px;flex-wrap:wrap;justify-content:center}
+.phone{width:340px;height:720px;border-radius:48px;background:var(--bg-0);border:8px solid #1d1d20;position:relative;overflow:hidden;box-shadow:0 30px 80px rgba(0,0,0,.6);flex:none}
+.phone .notch{position:absolute;top:10px;left:50%;transform:translateX(-50%);width:100px;height:28px;border-radius:20px;background:#000;z-index:5}
+.scr{position:absolute;inset:0;padding:54px 14px 90px;overflow:hidden}
+.cap{text-align:center;color:var(--text-2);font-size:12px;margin-top:12px}
+.title{font-size:28px;font-weight:700;line-height:1.15}
+.sub{color:var(--text-2);font-size:13px}
+.card{background:var(--bg-1);border-radius:16px;padding:14px;margin-top:12px}
+.row{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.btn{display:flex;align-items:center;justify-content:center;height:52px;border-radius:12px;background:var(--red-500);color:#fff;font-weight:600;font-size:17px;border:0;width:100%;font-family:var(--ui)}
+.btn.sec{background:var(--bg-2);color:var(--text-1)}
+.btn.ghost{background:none;color:var(--red-400)}
+.btn.dest{background:none;border:1px solid var(--border-2);color:var(--red-400)}
+.btn.sm{height:36px;font-size:15px;width:auto;padding:0 14px}
+.badge{display:inline-flex;align-items:center;gap:4px;height:22px;padding:0 8px;border-radius:999px;font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase}
+.b-red{background:var(--red-tint);color:var(--red-400)}.b-ok{background:var(--success-tint);color:var(--success)}.b-warn{background:var(--warning-tint);color:var(--warning)}.b-pr{background:var(--pr-tint);color:var(--pr)}.b-info{background:var(--info-tint);color:var(--info)}.b-cap{background:rgba(161,161,170,.14);color:var(--capped)}
+.week{display:flex;justify-content:space-between;margin-top:14px}
+.day{display:flex;flex-direction:column;align-items:center;gap:6px;font-size:11px;color:var(--text-3)}
+.day i{width:30px;height:30px;border-radius:50%;background:var(--bg-2);display:flex;align-items:center;justify-content:center;font-style:normal;color:var(--text-2);font-family:var(--num);font-size:15px}
+.day.done i{background:var(--red-500);color:#fff}.day.today i{outline:2px solid var(--red-400);outline-offset:2px}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:12px}
+.stat{background:var(--bg-1);border-radius:14px;padding:10px}
+.stat .num{font-size:30px;line-height:1.05;display:block;margin-top:2px}
+.stat small{font-size:11px;color:var(--success)}
+.tabbar{position:absolute;left:0;right:0;bottom:0;height:78px;background:var(--bg-1);border-top:1px solid var(--border-1);display:flex;justify-content:space-around;padding-top:8px}
+.tab{display:flex;flex-direction:column;align-items:center;gap:3px;font-size:10px;color:var(--text-3);width:56px}
+.tab svg{width:22px;height:22px}
+.tab.on{color:var(--text-1)}.tab.on svg{color:var(--red-500)}
+.hdr{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px}
+.ex{background:var(--bg-1);border-radius:16px;padding:12px;margin-top:10px;position:relative}
+.ex h4{font-size:17px;font-weight:600}
+.ex .t{font-size:12px;color:var(--text-2);margin:2px 0 8px}
+.ss{position:relative;padding-left:10px}
+.ss:before{content:"";position:absolute;left:0;top:10px;bottom:0;width:3px;border-radius:3px;background:var(--red-500)}
+.cols{display:grid;grid-template-columns:28px 1fr 60px 44px 36px;gap:6px;padding:0 6px;margin-bottom:4px}
+.set{display:grid;grid-template-columns:28px 1fr 60px 44px 36px;gap:6px;align-items:center;height:46px;background:var(--bg-2);border-radius:10px;padding:0 6px;margin-top:5px}
+.set .n{font-family:var(--num);color:var(--text-2);font-size:16px;text-align:center}
+.set .p{font-size:12px;color:var(--text-3)}
+.set .v{font-family:var(--num);font-size:22px;text-align:center;font-variant-numeric:tabular-nums}
+.set .v.sug{color:var(--text-3)}
+.chk{width:32px;height:32px;border-radius:8px;border:1.5px solid var(--border-2);display:flex;align-items:center;justify-content:center}
+.set.done{background:var(--red-tint)}
+.set.done .chk{background:var(--red-500);border-color:var(--red-500);box-shadow:0 0 16px rgba(229,22,42,.45)}
+.set.wu .n{color:var(--text-3)}
+.timer{position:absolute;left:10px;right:10px;bottom:86px;height:48px;background:var(--bg-2);border-radius:14px;display:flex;align-items:center;padding:0 14px;gap:10px;overflow:hidden;border:1px solid var(--border-1)}
+.timer .num{font-size:24px}
+.timer:after{content:"";position:absolute;left:0;bottom:0;height:3px;width:62%;background:var(--red-500)}
+.ring{display:block;margin:6px auto 0}
+.next li{list-style:none;display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-bottom:1px solid var(--border-1);font-size:14px}
+.next li:last-child{border:0}
+.next small{display:block;color:var(--text-2);font-size:12px}
+.ai{border:1px solid rgba(100,168,255,.4)}
+.comp{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:16px}
+.comp .card{margin:0;background:var(--bg-0);border:1px solid var(--border-1)}
+.stack>*+*{margin-top:8px}
+.heat{display:grid;grid-template-columns:repeat(18,1fr);gap:3px;margin-top:8px}
+.heat i{aspect-ratio:1;border-radius:3px}
+.keys{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-top:10px}
+.keys b{height:44px;border-radius:10px;background:var(--bg-2);display:flex;align-items:center;justify-content:center;font-family:var(--num);font-size:22px;font-weight:600}
+@media (max-width:600px){h1{font-size:44px}.typerow{flex-direction:column;gap:4px}.phone{transform:scale(.92);transform-origin:top center;margin-bottom:-50px}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="micro">Design system v0.1</div>
+  <h1 style="margin-top:8px">RED<span>LINE</span></h1>
+  <p class="lede">Black does the heavy lifting. Red is reserved for action and your data. Numbers are the hero. Every target is thumb-sized.</p>
+
+  <section>
+    <h2>Screens</h2>
+    <div class="phones">
+      <!-- TODAY -->
+      <div>
+      <div class="phone"><div class="notch"></div><div class="scr">
+        <div class="micro">Sunday, Oct 4</div>
+        <div class="title">Today</div>
+        <div class="week">
+          <div class="day done"><i>M</i></div><div class="day"><i>T</i></div><div class="day done"><i>W</i></div><div class="day"><i>T</i></div><div class="day done"><i>F</i></div><div class="day"><i>S</i></div><div class="day today"><i>S</i></div>
+        </div>
+        <div class="card">
+          <div class="row"><span class="micro">Next up</span><span class="sub">Day 2 of 4</span></div>
+          <div style="font-size:22px;font-weight:700;margin:6px 0 2px">Upper B · Push</div>
+          <div class="sub">6 exercises · 19 sets · ~55 min</div>
+          <button class="btn" style="margin-top:12px">Start workout</button>
+        </div>
+        <div class="stats">
+          <div class="stat"><span class="micro">Sessions</span><span class="num">3<span style="color:var(--text-3);font-size:20px">/4</span></span></div>
+          <div class="stat"><span class="micro">Sets</span><span class="num">58</span><small>↑ 6</small></div>
+          <div class="stat"><span class="micro">Tonnage</span><span class="num">21.4k</span><small>↑ 8%</small></div>
+        </div>
+        <div class="card ai">
+          <div class="row"><span class="badge b-info">✦ AI draft</span><span class="sub">from Claude</span></div>
+          <div style="font-weight:600;margin-top:8px">DB-only lower day, 50 lb cap</div>
+          <div class="row" style="margin-top:10px"><span class="sub">5 exercises · 2 new</span><button class="btn sm sec">Review</button></div>
+        </div>
+        <div class="tabbar">
+          <div class="tab on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>Today</div>
+          <div class="tab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><path d="M6.5 6.5v11M17.5 6.5v11M3 9v6M21 9v6M6.5 12h11"/></svg>Routines</div>
+          <div class="tab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><path d="M22 7l-8.5 8.5-5-5L2 17"/><path d="M16 7h6v6"/></svg>Progress</div>
+          <div class="tab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><rect x="3" y="3" width="18" height="18" rx="4"/><path d="M8 9a5 5 0 0 1 8 0l-3 3"/></svg>Body</div>
+          <div class="tab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1L7 17M17 7l2.1-2.1"/></svg>Settings</div>
+        </div>
+      </div></div>
+      <div class="cap">Today</div>
+      </div>
+
+      <!-- WORKOUT -->
+      <div>
+      <div class="phone"><div class="notch"></div><div class="scr">
+        <div class="hdr"><div><div class="micro">Upper B · Push</div><div class="num" style="font-size:22px">24:18</div></div><button class="btn sm">Finish</button></div>
+        <div class="ex">
+          <div class="row"><h4>Incline DB Press</h4><span class="badge b-cap">🔒 Capped</span></div>
+          <div class="t">3 × 8–12 · 50 lb/hand · cap 50</div>
+          <div class="cols micro"><span>Set</span><span>Prev</span><span style="text-align:center">Lb</span><span style="text-align:center">Reps</span><span></span></div>
+          <div class="set wu"><span class="n">W</span><span class="p">25 × 8</span><span class="v">25</span><span class="v">8</span><span class="chk" style="background:var(--bg-3);border-color:var(--bg-3)"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#A1A1AA" stroke-width="3"><path d="M5 12l5 5L20 7"/></svg></span></div>
+          <div class="set done"><span class="n">1</span><span class="p">50 × 12</span><span class="v">50</span><span class="v">12</span><span class="chk"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3"><path d="M5 12l5 5L20 7"/></svg></span></div>
+          <div class="set"><span class="n">2</span><span class="p">50 × 12</span><span class="v sug">50</span><span class="v sug">12</span><span class="chk"></span></div>
+        </div>
+        <div class="ss">
+          <div class="ex">
+            <div class="row"><h4><span class="micro" style="color:var(--red-400);margin-right:6px">A1</span>Lateral Raise</h4><span class="badge b-ok">↑ +5</span></div>
+            <div class="t">3 × 12–15 · 20 lb/hand</div>
+            <div class="set"><span class="n">1</span><span class="p">15 × 15</span><span class="v sug">20</span><span class="v sug">12</span><span class="chk"></span></div>
+          </div>
+          <div class="ex">
+            <div class="row"><h4><span class="micro" style="color:var(--red-400);margin-right:6px">A2</span>Cable Pushdown</h4><span class="badge b-warn">= Hold</span></div>
+            <div class="t">3 × 10–12 · 60 lb</div>
+          </div>
+        </div>
+        <div class="timer"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#FF4757" stroke-width="2"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2 2M9 2h6"/></svg><span class="micro" style="flex:1">Rest</span><span class="num">1:04</span><span class="sub">Skip</span></div>
+        <div class="tabbar"><div class="tab on" style="width:auto;flex-direction:row;gap:8px;font-size:13px;color:var(--text-2)">Upper B · set 5 of 19</div></div>
+      </div></div>
+      <div class="cap">Live workout · capped lift, superset, rest bar</div>
+      </div>
+
+      <!-- FINISH -->
+      <div>
+      <div class="phone"><div class="notch"></div><div class="scr">
+        <div class="micro">Workout complete</div>
+        <div class="title">Upper B · Push</div>
+        <div class="stats">
+          <div class="stat"><span class="micro">Time</span><span class="num">52m</span></div>
+          <div class="stat"><span class="micro">Tonnage</span><span class="num">7.9k</span></div>
+          <div class="stat"><span class="micro">Est. kcal</span><span class="num">318</span></div>
+        </div>
+        <div class="card">
+          <div class="row"><span class="micro">PRs</span><span class="badge b-pr">★ 2 new</span></div>
+          <div class="row" style="margin-top:8px;font-size:14px"><span>Lateral Raise</span><span class="num" style="font-size:18px;color:var(--pr)">20 × 15</span></div>
+        </div>
+        <div class="card">
+          <span class="micro">Next time</span>
+          <ul class="next" style="margin-top:4px">
+            <li><span>Lateral Raise<small>Hit 15/15/15</small></span><span class="badge b-ok">↑ 25 lb</span></li>
+            <li><span>Cable Pushdown<small>12/11/10 · reps up</small></span><span class="badge b-warn">= Hold</span></li>
+            <li><span>Incline DB Press<small>At your 50 lb max</small></span><span class="badge b-cap">🔒 Cap</span></li>
+          </ul>
+        </div>
+        <div class="card" style="border:1px solid var(--border-2)">
+          <div style="font-size:14px">Capped at 50 lb on Incline DB Press. Swap to <b>Deficit DB Press</b>?</div>
+          <div class="row" style="margin-top:10px;gap:8px"><button class="btn sm sec" style="flex:1">Not yet</button><button class="btn sm" style="flex:1">Swap</button></div>
+        </div>
+      </div></div>
+      <div class="cap">Finish summary · progression + variation prompt</div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Color</h2>
+    <div class="micro" style="margin-bottom:10px">Surfaces &amp; text</div>
+    <div class="swatches">
+      <div class="sw"><i style="background:#0A0A0B"></i><div><b>bg-0</b><span>#0A0A0B</span></div></div>
+      <div class="sw"><i style="background:#121214"></i><div><b>bg-1</b><span>#121214</span></div></div>
+      <div class="sw"><i style="background:#1A1A1D"></i><div><b>bg-2</b><span>#1A1A1D</span></div></div>
+      <div class="sw"><i style="background:#242428"></i><div><b>bg-3</b><span>#242428</span></div></div>
+      <div class="sw"><i style="background:#F5F5F7"></i><div><b>text-1</b><span>#F5F5F7</span></div></div>
+      <div class="sw"><i style="background:#A1A1AA"></i><div><b>text-2</b><span>#A1A1AA</span></div></div>
+      <div class="sw"><i style="background:#74747E"></i><div><b>text-3</b><span>#74747E</span></div></div>
+    </div>
+    <div class="micro" style="margin:20px 0 10px">Red</div>
+    <div class="swatches">
+      <div class="sw"><i style="background:#FF6B78"></i><div><b>red-300</b><span>#FF6B78</span></div></div>
+      <div class="sw"><i style="background:#FF4757"></i><div><b>red-400</b><span>text · chart</span></div></div>
+      <div class="sw"><i style="background:#E5162A"></i><div><b>red-500</b><span>fills · brand</span></div></div>
+      <div class="sw"><i style="background:#B80F20"></i><div><b>red-600</b><span>pressed</span></div></div>
+      <div class="sw"><i style="background:#4A0910"></i><div><b>red-800</b><span>#4A0910</span></div></div>
+    </div>
+    <div class="micro" style="margin:20px 0 10px">Semantic</div>
+    <div class="swatches">
+      <div class="sw"><i style="background:#30D158"></i><div><b>success</b><span>progressing</span></div></div>
+      <div class="sw"><i style="background:#FFB224"></i><div><b>warning</b><span>hold · deload</span></div></div>
+      <div class="sw"><i style="background:#F5C542"></i><div><b>pr</b><span>records</span></div></div>
+      <div class="sw"><i style="background:#64A8FF"></i><div><b>info</b><span>AI · sync</span></div></div>
+      <div class="sw"><i style="background:#A1A1AA"></i><div><b>capped</b><span>equipment max</span></div></div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Type</h2>
+    <div class="typerow"><span class="micro">Display 56 · Barlow</span><span class="num" style="font-size:56px;font-weight:700;line-height:1">1:30</span></div>
+    <div class="typerow"><span class="micro">Number 34 · Barlow</span><span class="num" style="font-size:34px">225 <span style="font-size:17px;color:var(--text-2);font-family:var(--ui);font-weight:500">lb</span></span></div>
+    <div class="typerow"><span class="micro">Title 28 · SF Pro</span><span style="font-size:28px;font-weight:700">Progress</span></div>
+    <div class="typerow"><span class="micro">Heading 20</span><span style="font-size:20px;font-weight:600">Barbell Back Squat</span></div>
+    <div class="typerow"><span class="micro">Body 17</span><span style="font-size:17px">Hit 12/12/12. +5 lb next time.</span></div>
+    <div class="typerow"><span class="micro">Caption 13</span><span style="font-size:13px;color:var(--text-2)">Last trained 3 days ago</span></div>
+    <div class="typerow"><span class="micro">Micro 11</span><span class="micro">Working sets</span></div>
+  </section>
+
+  <section>
+    <h2>Components</h2>
+    <div class="comp">
+      <div class="card stack"><span class="micro">Buttons</span>
+        <button class="btn">Start workout</button><button class="btn sec">Add exercise</button><button class="btn ghost">+ Add set</button><button class="btn dest">Discard workout</button></div>
+      <div class="card"><span class="micro">Badges</span>
+        <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:12px">
+          <span class="badge b-ok">↑ Progressing</span><span class="badge b-warn">= Hold</span><span class="badge b-warn">↓ Deload</span><span class="badge b-cap">🔒 Capped</span><span class="badge b-pr">★ PR</span><span class="badge b-info">✦ AI draft</span><span class="badge b-red">Superset</span></div>
+        <div class="micro" style="margin-top:22px">Set row states</div>
+        <div class="set" style="margin-top:8px"><span class="n">1</span><span class="p">sugg.</span><span class="v sug">45</span><span class="v sug">10</span><span class="chk"></span></div>
+        <div class="set done"><span class="n">2</span><span class="p">done</span><span class="v">45</span><span class="v">12</span><span class="chk"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3"><path d="M5 12l5 5L20 7"/></svg></span></div>
+      </div>
+      <div class="card"><span class="micro">Keypad sheet</span>
+        <div class="row" style="margin-top:10px"><span class="btn sm sec">−5</span><span class="num" style="font-size:44px">50 <span style="font-size:16px;color:var(--text-2);font-family:var(--ui)">lb</span></span><span class="btn sm sec" style="opacity:.35">+5</span></div>
+        <div class="sub" style="text-align:center">🔒 Max 50 lb (your heaviest DB)</div>
+        <div class="keys"><b>1</b><b>2</b><b>3</b><b>4</b><b>5</b><b>6</b><b>7</b><b>8</b><b>9</b><b>.</b><b>0</b><b style="background:var(--red-500);font-family:var(--ui);font-size:15px">Next</b></div>
+      </div>
+      <div class="card"><span class="micro">Rest timer</span>
+        <svg class="ring" width="170" height="170" viewBox="0 0 170 170"><circle cx="85" cy="85" r="76" fill="none" stroke="#242428" stroke-width="10"/><circle cx="85" cy="85" r="76" fill="none" stroke="#E5162A" stroke-width="10" stroke-linecap="round" stroke-dasharray="477.5" stroke-dashoffset="181" transform="rotate(-90 85 85)"/><text x="85" y="98" text-anchor="middle" fill="#F5F5F7" font-family="Barlow Condensed" font-weight="700" font-size="48">1:04</text></svg>
+        <div class="row" style="margin-top:10px;gap:8px"><span class="btn sm sec" style="flex:1">−15</span><span class="btn sm sec" style="flex:1">Skip</span><span class="btn sm sec" style="flex:1">+15</span></div>
+      </div>
+      <div class="card"><span class="micro">e1RM trend</span>
+        <svg width="100%" height="130" viewBox="0 0 240 130" style="margin-top:10px">
+          <g stroke="#222226"><line x1="0" y1="20" x2="240" y2="20"/><line x1="0" y1="60" x2="240" y2="60"/><line x1="0" y1="100" x2="240" y2="100"/></g>
+          <polyline fill="none" stroke="#8E8E98" stroke-dasharray="4 4" stroke-width="1.5" points="0,100 60,90 120,78 180,66 240,52"/>
+          <polyline fill="none" stroke="#FF4757" stroke-width="2" points="0,104 30,96 60,92 90,86 120,80 150,70 180,64 210,56 240,40"/>
+          <circle cx="240" cy="40" r="5" fill="#FF4757"/><circle cx="150" cy="70" r="6" fill="none" stroke="#F5C542" stroke-width="2"/>
+        </svg>
+        <div class="row"><span class="sub">Bench e1RM</span><span class="num" style="font-size:22px">231 <small style="color:var(--success);font-size:13px">↑ 14</small></span></div>
+      </div>
+      <div class="card"><span class="micro">Consistency</span>
+        <div class="heat" id="heat"></div>
+        <div class="row" style="margin-top:12px"><span class="sub">Current streak</span><span class="num" style="font-size:22px">11 wks</span></div>
+        <div class="micro" style="margin-top:16px">Sets / muscle · this week</div>
+        <div style="margin-top:8px" id="vol"></div>
+      </div>
+    </div>
+  </section>
+</div>
+<script>
+const h=document.getElementById('heat'),c=['--heat-0','--heat-1','--heat-2','--heat-3','--heat-4'];
+let s=7;for(let i=0;i<126;i++){s=(s*9301+49297)%233280;const r=s/233280;const v=r<.45?0:r<.6?1:r<.78?2:r<.92?3:4;const e=document.createElement('i');e.style.background=`var(${c[v]})`;h.appendChild(e)}
+const vol=[['Chest',16],['Quads',14],['Lats',12],['Side delts',9],['Hamstrings',6]];
+document.getElementById('vol').innerHTML=vol.map(([m,n])=>`<div style="display:grid;grid-template-columns:78px 1fr 24px;align-items:center;gap:8px;margin-top:6px;font-size:12px;color:var(--text-2)"><span>${m}</span><span style="position:relative;height:8px;background:var(--bg-2);border-radius:4px"><span style="position:absolute;left:${10/22*100}%;width:${10/22*100}%;top:-3px;bottom:-3px;background:rgba(255,255,255,.05);border-radius:2px"></span><span style="position:absolute;left:0;top:0;bottom:0;width:${n/22*100}%;background:${n<10?'#8E8E98':'#FF4757'};border-radius:4px"></span></span><span class="num" style="font-size:15px;color:var(--text-1)">${n}</span></div>`).join('');
+</script>
+</body>
+</html>
