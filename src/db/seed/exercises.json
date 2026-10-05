@@ -205,9 +205,35 @@
    "triceps",
    "front_delts"
   ],
-  "harder": "Single-Arm DB Bench Press",
+  "harder": "Paused DB Bench Press",
   "default_rest_sec": 120,
   "notes": null
+ },
+ {
+  "name": "Paused DB Bench Press",
+  "equipment": "dumbbell",
+  "load_type": "per_hand",
+  "primary_muscle": "chest",
+  "secondary_muscles": [
+   "triceps",
+   "front_delts"
+  ],
+  "harder": "1½-Rep DB Bench Press",
+  "default_rest_sec": 120,
+  "notes": "Pause 2 seconds with the dumbbells at your chest, no bounce."
+ },
+ {
+  "name": "1½-Rep DB Bench Press",
+  "equipment": "dumbbell",
+  "load_type": "per_hand",
+  "primary_muscle": "chest",
+  "secondary_muscles": [
+   "triceps",
+   "front_delts"
+  ],
+  "harder": null,
+  "default_rest_sec": 120,
+  "notes": "Lower all the way, press halfway up, lower again, then press to lockout. That is one rep."
  },
  {
   "name": "Single-Arm DB Bench Press",
@@ -219,7 +245,7 @@
    "front_delts",
    "obliques"
   ],
-  "harder": "Deficit Pause DB Press",
+  "harder": null,
   "default_rest_sec": 120,
   "notes": null
  },
@@ -245,9 +271,22 @@
    "front_delts",
    "triceps"
   ],
-  "harder": "Single-Arm Incline DB Press",
+  "harder": "Paused Incline DB Press",
   "default_rest_sec": 120,
   "notes": null
+ },
+ {
+  "name": "Paused Incline DB Press",
+  "equipment": "dumbbell",
+  "load_type": "per_hand",
+  "primary_muscle": "chest",
+  "secondary_muscles": [
+   "front_delts",
+   "triceps"
+  ],
+  "harder": null,
+  "default_rest_sec": 120,
+  "notes": "Pause 2 seconds at the bottom, no bounce."
  },
  {
   "name": "Single-Arm Incline DB Press",
@@ -296,7 +335,7 @@
    "side_delts",
    "triceps"
   ],
-  "harder": "Single-Arm DB Shoulder Press",
+  "harder": "Seated DB Z-Press",
   "default_rest_sec": 120,
   "notes": null
  },
@@ -310,7 +349,7 @@
    "triceps",
    "obliques"
   ],
-  "harder": "Seated DB Z-Press",
+  "harder": null,
   "default_rest_sec": 120,
   "notes": null
  },
@@ -453,9 +492,19 @@
   "load_type": "total",
   "primary_muscle": "triceps",
   "secondary_muscles": [],
-  "harder": null,
+  "harder": "Single-Arm Overhead DB Extension",
   "default_rest_sec": null,
   "notes": null
+ },
+ {
+  "name": "Single-Arm Overhead DB Extension",
+  "equipment": "dumbbell",
+  "load_type": "total",
+  "primary_muscle": "triceps",
+  "secondary_muscles": [],
+  "harder": null,
+  "default_rest_sec": null,
+  "notes": "One dumbbell, one arm. Elbow points up the whole time."
  },
  {
   "name": "DB Skull Crusher",
@@ -565,9 +614,21 @@
   "secondary_muscles": [
    "hamstrings"
   ],
-  "harder": null,
+  "harder": "Single-Leg DB Hip Thrust",
   "default_rest_sec": null,
   "notes": null
+ },
+ {
+  "name": "Single-Leg DB Hip Thrust",
+  "equipment": "dumbbell",
+  "load_type": "total",
+  "primary_muscle": "glutes",
+  "secondary_muscles": [
+   "hamstrings"
+  ],
+  "harder": null,
+  "default_rest_sec": null,
+  "notes": "One foot planted, dumbbell on the hips. Count each side as a set or log one side."
  },
  {
   "name": "DB Calf Raise",
@@ -575,9 +636,19 @@
   "load_type": "per_hand",
   "primary_muscle": "calves",
   "secondary_muscles": [],
-  "harder": null,
+  "harder": "Single-Leg DB Calf Raise",
   "default_rest_sec": null,
   "notes": null
+ },
+ {
+  "name": "Single-Leg DB Calf Raise",
+  "equipment": "dumbbell",
+  "load_type": "total",
+  "primary_muscle": "calves",
+  "secondary_muscles": [],
+  "harder": null,
+  "default_rest_sec": null,
+  "notes": "Hold the dumbbell on the working side; full stretch at the bottom."
  },
  {
   "name": "DB Farmer Carry",

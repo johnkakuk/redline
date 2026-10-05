@@ -39,8 +39,17 @@ async function createRoutine(page: Page, name: string, exercise: string) {
   await expect(page).toHaveURL(/\/routines$/);
 }
 
-/** Log every working set of the first exercise as weight × reps via the keypad, then tick them all. */
+/** Press "Start workout" on the live workout screen if it hasn't been started yet. */
+async function startIfNeeded(page: Page) {
+  await page.locator('.wk-head').waitFor();
+  await page.locator('.ex-card').first().waitFor();
+  const start = page.locator('.start-bar').getByRole('button', { name: 'Start workout' });
+  if (await start.count()) await start.click();
+}
+
+/** Log every working set of the first exercise as weight × reps via the keypad, then ▶/■ each set. */
 async function logAll(page: Page, weight: string | null, reps: string, sets = 3) {
+  await startIfNeeded(page);
   await page.getByRole('button', { name: 'Set 1 reps' }).first().click();
   if (weight) {
     await sheet(page).getByRole('tab', { name: 'Weight' }).click();
@@ -53,7 +62,11 @@ async function logAll(page: Page, weight: string | null, reps: string, sets = 3)
     await page.locator('.kp-key.next').click();
   }
   if (await sheet(page).count()) await sheet(page).getByRole('button', { name: 'Done' }).click();
-  for (let i = 0; i < sets; i++) await page.getByRole('button', { name: 'Complete set' }).first().click();
+  for (let i = 0; i < sets; i++) {
+    await page.getByRole('button', { name: 'Start set' }).first().click();
+    await expect(page.locator('.set-clock')).toBeVisible();
+    await page.getByRole('button', { name: 'Finish set' }).click();
+  }
   await expect(page.getByRole('button', { name: 'Mark set not done' })).toHaveCount(sets);
 }
 
@@ -67,14 +80,16 @@ test('core loop: routine → workout → finish → next session progresses and 
   await page.getByRole('link', { name: 'Today' }).click();
   await page.getByRole('button', { name: 'Start workout' }).click();
   await expect(page).toHaveURL(/\/workout$/);
-  await expect(page.getByText('3 × 8–12 · cap 50')).toBeVisible();
+  await expect(page.getByText('3 × 10 · cap 50')).toBeVisible();
+  await expect(page.locator('.ex-progress')).toBeVisible(); // overview: collapsed until Start
+  await expect(page.getByLabel('Elapsed')).toHaveText('Ready');
 
-  await logAll(page, '45', '12');
+  await logAll(page, '45', '10');
   await expect(page.locator('.rest-bar')).toBeVisible();
 
   await page.getByRole('button', { name: 'Finish' }).click();
   await expect(page).toHaveURL(/summary/);
-  await expect(page.getByText('Hit 12/12/12 → +5 lb next time')).toBeVisible();
+  await expect(page.getByText('Hit 10/10/10 → +5 lb next time')).toBeVisible(); // 50×9 wouldn't beat 45×10, so reps stay
   await page.getByRole('button', { name: 'Done' }).click();
 
   // Trained days on the week strip open that day's workout; other days aren't buttons.
@@ -84,27 +99,34 @@ test('core loop: routine → workout → finish → next session progresses and 
   await expect(page.getByRole('heading', { name: 'Push A' })).toBeVisible();
   await page.goBack();
 
-  // Session 2: pre-filled at 50 lb, which is the cap.
+  // Session 2: pre-filled at 50 lb × 10, which is the cap.
   await page.getByRole('button', { name: 'Start workout' }).click();
+  await startIfNeeded(page);
   const w1 = page.getByRole('button', { name: 'Set 1 weight' });
   await expect(w1).toHaveText('50');
-  await expect(page.locator('.set-row').first().locator('.prev')).toHaveText('45 × 12');
+  await expect(page.getByRole('button', { name: 'Set 1 reps' })).toHaveText('10');
+  await expect(page.locator('.set-row').first().locator('.prev')).toHaveText('45 × 10');
   await w1.click();
-  await expect(sheet(page).getByRole('button', { name: 'Plus 5' })).toBeDisabled();
-  await expect(sheet(page).getByText('Max 50 lb')).toBeVisible();
+  // The cap informs but never blocks what you log.
+  await expect(sheet(page).getByText('At your 50 lb max')).toBeVisible();
+  await expect(sheet(page).getByRole('button', { name: 'Plus 5' })).toBeEnabled();
+  // Dumbbell pairs: enter both together; stored per dumbbell.
+  await sheet(page).getByRole('tab', { name: 'Both' }).click();
+  await expect(sheet(page).locator('.kp-value')).toContainText('100');
+  await sheet(page).getByRole('tab', { name: 'Each' }).click();
   await sheet(page).getByRole('button', { name: 'Done' }).click();
 
-  await logAll(page, null, '12');
+  await logAll(page, null, '10');
   await page.getByRole('button', { name: 'Finish' }).click();
   await expect(page.getByText(/Capped at 50 lb on DB Bench Press/)).toBeVisible();
   await expect(page.locator('.badge.pr').first()).toBeVisible(); // 50 × 12 beats 45 × 12
   await page.getByRole('button', { name: 'Swap', exact: true }).click();
-  await expect(page.getByText('Swapped to Single-Arm DB Bench Press')).toBeVisible();
+  await expect(page.getByText('Swapped to Paused DB Bench Press')).toBeVisible();
   await page.getByRole('button', { name: 'Done' }).click();
 
   await page.getByRole('link', { name: 'Routines' }).click();
   await page.getByRole('button', { name: /^Push A/ }).click();
-  await expect(page.locator('.item-card').getByText('Single-Arm DB Bench Press')).toBeVisible();
+  await expect(page.locator('.item-card').getByText('Paused DB Bench Press')).toBeVisible();
   expect(errors).toEqual([]);
 });
 

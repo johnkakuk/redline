@@ -80,7 +80,7 @@ export function ProgramPreview({ kind }: { kind: ProgramKind }) {
       {data?.map((d) => (
         <div className="card tight" key={d.name}>
           <div style={{ fontWeight: 600, marginBottom: 4 }}>{d.name}</div>
-          <div className="caption">{d.items.map((i) => `${i.name} ${i.working_sets}×${i.rep_min}–${i.rep_max}`).join(' · ')}</div>
+          <div className="caption">{d.items.map((i) => `${i.name} ${i.working_sets}×${i.rep_max}`).join(' · ')}</div>
         </div>
       ))}
     </div>

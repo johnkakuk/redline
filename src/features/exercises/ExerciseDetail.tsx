@@ -51,7 +51,7 @@ export function ExerciseDetailScreen() {
           <div className="list">
             {d.routines.map((r) => (
               <ListRow key={r.item_id} title={r.routine_name} onClick={() => nav(`/routines/${r.routine_id}`)}
-                sub={`${r.working_sets} × ${r.rep_min}–${r.rep_max}${r.state?.target_weight_kg != null ? ` · next ${w(r.state.target_weight_kg, true)} × ${r.state.target_reps.join('/')}` : ''}`}
+                sub={`${r.working_sets} × ${r.rep_max}${r.state?.target_weight_kg != null ? ` · next ${w(r.state.target_weight_kg, true)} × ${r.state.target_reps.join('/')}` : ''}`}
                 trailing={<StatusBadge status={r.state?.status} pinned={r.state?.pinned} />} />
             ))}
           </div>

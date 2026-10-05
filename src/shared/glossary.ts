@@ -26,11 +26,11 @@ export const GLOSSARY = {
   },
   progression: {
     title: 'Progression',
-    body: 'Double: keep the same weight and add reps until every set reaches the top of the rep range, then add weight and start again at the bottom. Off: Redline never changes your targets.',
+    body: 'Auto: Redline sets your next targets for you, adding reps first and then weight (see Reps). Off: your targets never change unless you edit them.',
   },
   rep_range: {
-    title: 'Rep range',
-    body: 'Each set aims for between the min and max reps. Hit the max on every set and the weight goes up next time. Below the min three sessions in a row and Redline suggests a lighter weight (a deload).',
+    title: 'Rep target',
+    body: 'The reps per set to reach before adding weight. Each session asks for one more rep per set. Once every set hits the target, the weight goes up and the reps drop just enough that your total volume still rises, then you climb again. Three sessions in a row without gaining a rep and Redline suggests a lighter weight (a deload).',
   },
   warmups: {
     title: 'Warm-up sets',

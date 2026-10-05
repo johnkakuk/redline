@@ -1,15 +1,16 @@
 import { describe, expect, it } from 'vitest';
-import { lbToKg, fromKg, toKg, kgToLb } from '../shared/units';
+import { fromKg, kgToLb, lbToKg, toKg } from '../shared/units';
 import {
-  acceptDeload, dismissDeload, dismissVariation, evaluate, initialState,
+  acceptDeload, dismissDeload, dismissVariation, evaluate, initialState, rampReps,
   type EngineState, type ProgressionInput,
 } from './progression';
 import { floorToIncrement, suggestWeight } from './rounding';
 
 const lb = lbToKg;
 const asLb = (kg: number | null) => (kg == null ? null : fromKg(kg, 'lb'));
+const T = 12;
 
-function input(over: Partial<ProgressionInput> & { reps?: number[]; weightLb?: number | number[] } = {}): ProgressionInput {
+function input(over: Partial<ProgressionInput> & { reps?: number[]; weightLb?: number | number[]; prev?: [number, number[]] } = {}): ProgressionInput {
   const reps = over.reps ?? [12, 12, 12];
   const wl = over.weightLb ?? 45;
   const weights = Array.isArray(wl) ? wl : reps.map(() => wl);
@@ -17,84 +18,80 @@ function input(over: Partial<ProgressionInput> & { reps?: number[]; weightLb?: n
     mode: 'double',
     loadType: 'per_hand',
     workingSets: 3,
-    repMin: 8,
-    repMax: 12,
+    repTarget: T,
     incrementKg: lb(5),
     capKg: null,
     hasHarderVariation: false,
     state: stateAt(45),
     units: 'lb',
     sets: reps.map((r, i) => ({ weight_kg: lb(weights[i]), reps: r, completed: true })),
+    previous: over.prev ? { weight_kg: lb(over.prev[0]), reps: over.prev[1] } : null,
     ...over,
   };
 }
 
 function stateAt(weightLb: number | null, over: Partial<EngineState> = {}): EngineState {
-  return { ...initialState(8, 3), target_weight_kg: weightLb == null ? null : lb(weightLb), ...over };
+  return { ...initialState(T, 3), target_weight_kg: weightLb == null ? null : lb(weightLb), ...over };
 }
 
-describe('progression engine', () => {
-  it('success under cap → +increment, reps reset to rep_min', () => {
+describe('progression engine: reps first, then weight', () => {
+  it('hitting the rep target on every set adds weight and drops reps so tonnage still rises', () => {
     const out = evaluate(input());
     expect(out.kind).toBe('up');
     expect(asLb(out.state.target_weight_kg)).toBe(50);
-    expect(out.state.target_reps).toEqual([8, 8, 8]);
+    expect(out.state.target_reps).toEqual([11, 11, 11]); // 45×12 = 540 → 50×11 = 550
     expect(out.state.status).toBe('progressing');
-    expect(out.reason).toBe('Hit 12/12/12 → +5 lb next time');
+    expect(out.reason).toBe('Hit 12/12/12 → +5 lb × 11 next time');
   });
 
-  it('success exactly reaching the cap still progresses', () => {
-    const out = evaluate(input({ capKg: lb(50) }));
-    expect(out.kind).toBe('up');
-    expect(asLb(out.state.target_weight_kg)).toBe(50);
-  });
-
-  it('success at the cap without a harder variation → capped, holds at cap', () => {
-    const out = evaluate(input({ capKg: lb(50), weightLb: 50, state: stateAt(50) }));
-    expect(out.kind).toBe('capped');
-    expect(out.state.status).toBe('capped');
-    expect(asLb(out.state.target_weight_kg)).toBe(50);
-    expect(out.reason).toContain('Link a harder variation');
-  });
-
-  it('success at the cap with a harder variation → variation_suggested', () => {
-    const out = evaluate(input({ capKg: lb(50), weightLb: 50, state: stateAt(50), hasHarderVariation: true }));
-    expect(out.kind).toBe('variation');
-    expect(out.state.status).toBe('variation_suggested');
-    expect(asLb(out.state.target_weight_kg)).toBe(50);
-  });
-
-  it('dismissed variation is re-offered after 2 more capped sessions', () => {
-    let state = dismissVariation(stateAt(50, { status: 'variation_suggested' }));
-    const base = { capKg: lb(50), weightLb: 50, hasHarderVariation: true };
-    let out = evaluate(input({ ...base, state }));
-    expect(out.kind).toBe('capped');
-    state = out.state;
-    out = evaluate(input({ ...base, state }));
-    expect(out.kind).toBe('capped');
-    state = out.state;
-    out = evaluate(input({ ...base, state }));
-    expect(out.kind).toBe('variation');
-  });
-
-  it('partial reps → hold weight, per-set target = min(last + 1, rep_max)', () => {
+  it('short of the target: one more rep per set next time, capped at the target', () => {
     const out = evaluate(input({ reps: [12, 11, 9] }));
     expect(out.kind).toBe('hold');
     expect(asLb(out.state.target_weight_kg)).toBe(45);
     expect(out.state.target_reps).toEqual([12, 12, 10]);
-    expect(out.state.status).toBe('holding');
     expect(out.state.fail_streak).toBe(0);
   });
 
-  it('3 misses in a row → deload suggested at 90% rounded down; streak resets', () => {
+  it('a full cycle: climb reps at 45, step to 50 × 11, climb back to 12', () => {
+    let st: EngineState = stateAt(45, { target_reps: [10, 10, 10] });
+    let prev: [number, number[]] = [45, [9, 9, 9]];
+    const seen: string[] = [];
+    const sessions: [number, number[]][] = [[45, [10, 10, 10]], [45, [11, 11, 11]], [45, [12, 12, 12]], [50, [11, 11, 11]], [50, [12, 12, 12]]];
+    for (const [wt, reps] of sessions) {
+      const out = evaluate(input({ state: st, weightLb: wt, reps, prev }));
+      seen.push(`${asLb(out.state.target_weight_kg)}×${out.state.target_reps[0]}`);
+      st = out.state;
+      prev = [wt, reps];
+    }
+    expect(seen).toEqual(['45×11', '45×12', '50×11', '50×12', '55×11']);
+  });
+
+  it('tonnage per set never drops when the weight goes up', () => {
+    for (const [from, to, t] of [[45, 50, 12], [20, 25, 12], [225, 230, 5], [10, 15, 10], [100, 105, 8]]) {
+      const r = rampReps(lb(from), lb(to), t);
+      expect(to * r).toBeGreaterThan(from * t);
+      expect(r).toBeLessThanOrEqual(t);
+    }
+    expect(rampReps(lb(20), lb(25), 12)).toBe(10);
+    expect(rampReps(lb(225), lb(230), 5)).toBe(5); // small relative jump: keep the reps
+  });
+
+  it('gaining reps at the same weight is progress, never a stall', () => {
+    const out = evaluate(input({ reps: [10, 9, 8], prev: [45, [9, 8, 8]], state: stateAt(45, { fail_streak: 2 }) }));
+    expect(out.kind).toBe('hold');
+    expect(out.state.fail_streak).toBe(0);
+    expect(out.reason).toBe('10/9/8 · +2 reps · aim 11/10/9 next');
+  });
+
+  it('three sessions without a rep gain → deload suggested at 90%, rounded down', () => {
     let state = stateAt(100);
-    const miss = { reps: [8, 7, 6], weightLb: 100 };
-    let out = evaluate(input({ ...miss, state }));
+    const stall = { reps: [8, 7, 6], weightLb: 100, prev: [100, [8, 7, 6]] as [number, number[]] };
+    let out = evaluate(input({ ...stall, state }));
     expect(out.kind).toBe('miss');
     expect(out.state.fail_streak).toBe(1);
-    out = evaluate(input({ ...miss, state: out.state }));
+    out = evaluate(input({ ...stall, state: out.state }));
     expect(out.state.fail_streak).toBe(2);
-    out = evaluate(input({ ...miss, state: out.state }));
+    out = evaluate(input({ ...stall, state: out.state }));
     expect(out.kind).toBe('deload');
     expect(out.state.status).toBe('deload_suggested');
     expect(asLb(out.state.prompt_weight_kg)).toBe(90);
@@ -105,57 +102,53 @@ describe('progression engine', () => {
     expect(dismissDeload(out.state).target_weight_kg).toBe(out.state.target_weight_kg);
   });
 
+  it('no previous session at this weight → no stall counted', () => {
+    const out = evaluate(input({ reps: [8, 7, 6], prev: [40, [12, 12, 12]], state: stateAt(45, { fail_streak: 1 }) }));
+    expect(out.kind).toBe('hold');
+    expect(out.state.fail_streak).toBe(0);
+  });
+
   it('deload rounds down to the increment (95 lb × 0.9 = 85.5 → 85)', () => {
-    let out = evaluate(input({ reps: [6, 6, 6], weightLb: 95, state: stateAt(95, { fail_streak: 2 }) }));
+    const out = evaluate(input({ reps: [6, 6, 6], weightLb: 95, state: stateAt(95, { fail_streak: 2 }), prev: [95, [6, 6, 6]] }));
     expect(asLb(out.state.prompt_weight_kg)).toBe(85);
   });
 
-  it('training lighter than target is not a miss', () => {
-    const out = evaluate(input({ reps: [8, 7, 6], weightLb: 40, state: stateAt(45, { fail_streak: 2 }) }));
-    expect(out.kind).toBe('hold');
-    expect(out.state.fail_streak).toBe(2);
-    expect(asLb(out.state.target_weight_kg)).toBe(45);
-  });
-
-  it('lighter session that hits rep_max climbs back toward the target, never past it', () => {
-    const out = evaluate(input({ reps: [12, 12, 12], weightLb: 35, state: stateAt(45) }));
-    expect(out.kind).toBe('up');
-    expect(asLb(out.state.target_weight_kg)).toBe(40);
-    const out2 = evaluate(input({ reps: [12, 12, 12], weightLb: 40, state: stateAt(45) }));
-    expect(asLb(out2.state.target_weight_kg)).toBe(45);
-  });
-
-  it('heavier than target and short of rep_min holds the old target without a miss', () => {
-    const out = evaluate(input({ reps: [7, 6, 6], weightLb: 50, state: stateAt(45) }));
-    expect(out.kind).toBe('hold');
-    expect(out.state.fail_streak).toBe(0);
-    expect(asLb(out.state.target_weight_kg)).toBe(45);
-  });
-
-  it('heavier than target within range adopts the heavier weight', () => {
-    const out = evaluate(input({ reps: [10, 9, 9], weightLb: 50, state: stateAt(45) }));
+  it('success at the cap without a harder variation → capped, holds at cap', () => {
+    const out = evaluate(input({ capKg: lb(50), weightLb: 50, state: stateAt(50) }));
+    expect(out.kind).toBe('capped');
+    expect(out.state.status).toBe('capped');
     expect(asLb(out.state.target_weight_kg)).toBe(50);
+    expect(out.state.target_reps).toEqual([12, 12, 12]);
+    expect(out.reason).toContain('Link a harder variation');
   });
 
-  it('pinned items never change', () => {
-    const state = stateAt(45, { pinned: true });
-    const out = evaluate(input({ state }));
-    expect(out.kind).toBe('pinned');
-    expect(out.state).toEqual(state);
-  });
-
-  it('progression mode none never changes', () => {
-    const out = evaluate(input({ mode: 'none' }));
-    expect(out.kind).toBe('manual');
-    expect(asLb(out.state.target_weight_kg)).toBe(45);
-  });
-
-  it('per-hand cap applies to each dumbbell: 45 → cap 50 → stops at 50', () => {
+  it('success exactly reaching the cap still progresses', () => {
     const out = evaluate(input({ capKg: lb(50) }));
+    expect(out.kind).toBe('up');
     expect(asLb(out.state.target_weight_kg)).toBe(50);
-    const out2 = evaluate(input({ capKg: lb(50), weightLb: 50, state: out.state }));
-    expect(asLb(out2.state.target_weight_kg)).toBe(50);
-    expect(out2.state.status).toBe('capped');
+  });
+
+  it('success at the cap with a harder variation → variation suggested', () => {
+    const out = evaluate(input({ capKg: lb(50), weightLb: 50, state: stateAt(50), hasHarderVariation: true }));
+    expect(out.kind).toBe('variation');
+    expect(out.state.status).toBe('variation_suggested');
+  });
+
+  it('dismissed variation is re-offered after 2 more capped sessions', () => {
+    let state = dismissVariation(stateAt(50, { status: 'variation_suggested' }));
+    const base = { capKg: lb(50), weightLb: 50, hasHarderVariation: true };
+    let out = evaluate(input({ ...base, state }));
+    expect(out.kind).toBe('capped');
+    state = out.state;
+    out = evaluate(input({ ...base, state }));
+    expect(out.kind).toBe('capped');
+    out = evaluate(input({ ...base, state: out.state }));
+    expect(out.kind).toBe('variation');
+  });
+
+  it('lifting more than the cap is allowed; suggestions still never exceed it', () => {
+    const out = evaluate(input({ capKg: lb(50), weightLb: 55, state: stateAt(50) }));
+    expect(out.state.target_weight_kg! <= lb(50) + 1e-9).toBe(true);
   });
 
   it('cap not on the increment grid never produces a suggestion above the cap', () => {
@@ -164,21 +157,45 @@ describe('progression engine', () => {
     expect(out.state.status).toBe('capped');
   });
 
-  it('no history → baseline from the session', () => {
-    const out = evaluate(input({ state: null, reps: [10, 9, 8], weightLb: 45 }));
+  it('training lighter than target is not a stall and keeps the target', () => {
+    const out = evaluate(input({ reps: [8, 7, 6], weightLb: 40, state: stateAt(45, { fail_streak: 2 }) }));
+    expect(out.kind).toBe('hold');
+    expect(out.state.fail_streak).toBe(2);
+    expect(asLb(out.state.target_weight_kg)).toBe(45);
+  });
+
+  it('lighter session that hits the target climbs back toward the old target, never past it', () => {
+    expect(asLb(evaluate(input({ weightLb: 35, state: stateAt(45) })).state.target_weight_kg)).toBe(40);
+    expect(asLb(evaluate(input({ weightLb: 40, state: stateAt(45) })).state.target_weight_kg)).toBe(45);
+  });
+
+  it('heavier than target adopts the heavier weight', () => {
+    const out = evaluate(input({ reps: [10, 9, 9], weightLb: 50, state: stateAt(45) }));
+    expect(asLb(out.state.target_weight_kg)).toBe(50);
+    expect(out.state.fail_streak).toBe(0);
+  });
+
+  it('pinned items never change; progression off never changes', () => {
+    const state = stateAt(45, { pinned: true });
+    expect(evaluate(input({ state })).state).toEqual(state);
+    expect(evaluate(input({ mode: 'none' })).kind).toBe('manual');
+  });
+
+  it('no history → baseline from the session, reps up next time', () => {
+    const out = evaluate(input({ state: null, reps: [10, 9, 8] }));
     expect(out.kind).toBe('baseline');
     expect(asLb(out.state.target_weight_kg)).toBe(45);
     expect(out.state.target_reps).toEqual([11, 10, 9]);
   });
 
-  it('no history and a perfect session → progresses immediately', () => {
+  it('no history and every set at the target → progresses immediately', () => {
     const out = evaluate(input({ state: null }));
     expect(out.kind).toBe('up');
     expect(asLb(out.state.target_weight_kg)).toBe(50);
   });
 
-  it('incomplete session (2 of 3 sets) holds even at rep_max', () => {
-    const out = evaluate(input({ reps: [12, 12], weightLb: 45 }));
+  it('incomplete session (2 of 3 sets) holds even at the target', () => {
+    const out = evaluate(input({ reps: [12, 12] }));
     expect(out.kind).toBe('hold');
     expect(asLb(out.state.target_weight_kg)).toBe(45);
   });
@@ -196,9 +213,8 @@ describe('progression engine', () => {
       evaluate({
         ...input({ reps }),
         loadType: 'bodyweight',
-        repMin: 8,
-        repMax: 15,
-        state: { ...initialState(8, 3) },
+        repTarget: 15,
+        state: { ...initialState(15, 3) },
         sets: reps.map((r) => ({ weight_kg: null, reps: r, completed: true })),
         ...over,
       });
@@ -209,37 +225,40 @@ describe('progression engine', () => {
       expect(out.state.target_reps).toEqual([11, 10, 9]);
     });
 
-    it('at rep_max with a harder variation → variation suggested', () => {
-      const out = bw([15, 15, 15], { hasHarderVariation: true });
-      expect(out.kind).toBe('variation');
+    it('stalls are counted against the previous session', () => {
+      expect(bw([10, 9, 8], { previous: { weight_kg: null, reps: [10, 9, 8] } }).kind).toBe('miss');
+      expect(bw([10, 9, 9], { previous: { weight_kg: null, reps: [10, 9, 8] } }).kind).toBe('hold');
     });
 
-    it('at rep_max without a variation → capped with a hint', () => {
+    it('at the target with a harder variation → variation suggested', () => {
+      expect(bw([15, 15, 15], { hasHarderVariation: true }).kind).toBe('variation');
+    });
+
+    it('at the target without a variation → capped with a hint', () => {
       const out = bw([15, 15, 15]);
       expect(out.kind).toBe('capped');
       expect(out.reason).toContain('harder variation');
     });
   });
 
-  it('bodyweight_plus starts adding load at rep_max', () => {
+  it('bodyweight_plus starts adding load at the target', () => {
     const out = evaluate({
       ...input(),
       loadType: 'bodyweight_plus',
-      state: { ...initialState(8, 3), target_weight_kg: 0 },
+      state: { ...initialState(T, 3), target_weight_kg: 0 },
       sets: [12, 12, 12].map((r) => ({ weight_kg: null, reps: r, completed: true })),
     });
     expect(out.kind).toBe('up');
     expect(asLb(out.state.target_weight_kg)).toBe(5);
+    expect(out.state.target_reps).toEqual([10, 10, 10]);
   });
 
   describe('increment rounding', () => {
     it('2.5 lb increments', () => {
-      const out = evaluate(input({ incrementKg: lb(2.5), weightLb: 45 }));
-      expect(asLb(out.state.target_weight_kg)).toBe(47.5);
+      expect(asLb(evaluate(input({ incrementKg: lb(2.5) })).state.target_weight_kg)).toBe(47.5);
     });
     it('5 lb increments round an off-grid baseline down', () => {
-      const out = evaluate(input({ state: null, weightLb: 47, reps: [10, 10, 10] }));
-      expect(asLb(out.state.target_weight_kg)).toBe(45);
+      expect(asLb(evaluate(input({ state: null, weightLb: 47, reps: [10, 10, 10] })).state.target_weight_kg)).toBe(45);
     });
     it('floorToIncrement tolerates float noise', () => {
       expect(floorToIncrement(lb(50), lb(5))).toBeCloseTo(lb(50), 9);

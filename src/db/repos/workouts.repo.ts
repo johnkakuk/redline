@@ -73,7 +73,7 @@ function addPlannedSets(db: Db, settings: Settings, weId: string, ex: Exercise, 
     for (const w of warmupSets(weight, increment, item.warmup_sets)) insertSet(db, weId, order++, 'warmup', w.weight_kg, w.reps);
   }
   for (let i = 0; i < item.working_sets; i++) {
-    const reps = state?.target_reps[i] ?? state?.target_reps.at(-1) ?? item.rep_min;
+    const reps = state?.target_reps[i] ?? state?.target_reps.at(-1) ?? item.rep_max;
     insertSet(db, weId, order++, 'working', weight, reps);
   }
 }
@@ -102,6 +102,16 @@ export function startWorkout(db: Db, opts: { routineId?: string | null } = {}): 
     }
     return id;
   });
+}
+
+/** "Start workout": the clock starts now, unless sets have already been logged. */
+export function beginWorkout(db: Db, id: string) {
+  db.run(
+    `UPDATE workouts SET started_at = ? WHERE id = ? AND status = 'active' AND NOT EXISTS (
+       SELECT 1 FROM sets s JOIN workout_exercises we ON we.id = s.workout_exercise_id
+       WHERE we.workout_id = workouts.id AND s.completed_at IS NOT NULL AND s.deleted_at IS NULL)`,
+    [now(), id],
+  );
 }
 
 export function getWorkout(db: Db, id: string): WorkoutFull {
@@ -286,6 +296,19 @@ export function profileOf(s: Settings): Profile {
   return { sex: s.sex, heightCm: s.height_cm, ageYears: s.birth_date ? ageFrom(s.birth_date) : null };
 }
 
+/** Completed working sets for a routine item in a given workout: lightest weight and reps in order. */
+function previousWorkingSets(db: Db, workoutId: string, itemId: string): { weight_kg: number | null; reps: number[] } | null {
+  const rows = db.all<{ weight_kg: number | null; reps: number | null }>(
+    `SELECT s.weight_kg, s.reps FROM sets s JOIN workout_exercises we ON we.id = s.workout_exercise_id
+     WHERE we.workout_id = ? AND we.routine_item_id = ? AND s.kind = 'working' AND s.completed_at IS NOT NULL
+       AND s.deleted_at IS NULL AND we.deleted_at IS NULL
+     ORDER BY we.sort_order, s.sort_order`, [workoutId, itemId],
+  );
+  if (!rows.length) return null;
+  const weights = rows.map((r) => r.weight_kg).filter((x): x is number => x != null);
+  return { weight_kg: weights.length ? Math.min(...weights) : null, reps: rows.map((r) => r.reps ?? 0) };
+}
+
 export function finishWorkout(db: Db, id: string): WorkoutSummary {
   db.tx(() => {
     const w = getWorkoutRow(db, id);
@@ -334,8 +357,8 @@ export function finishWorkout(db: Db, id: string): WorkoutSummary {
         mode: item.progression_mode,
         loadType: we.exercise.load_type,
         workingSets: item.working_sets,
-        repMin: item.rep_min,
-        repMax: item.rep_max,
+        repTarget: item.rep_max,
+        previous: before?.last_evaluated_workout_id ? previousWorkingSets(db, before.last_evaluated_workout_id, item.id) : null,
         incrementKg: we.increment_kg,
         capKg: we.cap_kg,
         hasHarderVariation: !!we.exercise.harder_variation_id,
@@ -436,20 +459,20 @@ export function updateRoutineFromWorkout(db: Db, workoutId: string): number {
       const working = we.sets.filter((s) => s.kind === 'working' && s.completed_at);
       if (!working.length) continue;
       const reps = working.map((s) => s.reps ?? 0);
-      const repMin = Math.max(1, Math.min(...reps));
-      const repMax = Math.max(repMin + 2, ...reps);
+      // Rep target: a little above the best set, so there's room to climb before adding weight.
+      const target = Math.max(1, ...reps) + 2;
       const itemId = newId();
       db.run(
         `INSERT INTO routine_items (id, routine_id, exercise_id, sort_order, working_sets, rep_min, rep_max) VALUES (?,?,?,?,?,?,?)`,
-        [itemId, w.routine_id, we.exercise_id, order++, working.length, repMin, repMax],
+        [itemId, w.routine_id, we.exercise_id, order++, working.length, target, target],
       );
       db.run('UPDATE workout_exercises SET routine_item_id = ? WHERE id = ?', [itemId, we.id]);
       const used = we.exercise.load_type === 'bodyweight' ? null : Math.min(...working.map((s) => s.weight_kg ?? 0));
       writeState(db, {
-        ...initialState(repMin, working.length),
+        ...initialState(target, working.length),
         routine_item_id: itemId,
         target_weight_kg: used,
-        target_reps: working.map((s) => Math.min((s.reps ?? repMin) + 1, repMax)),
+        target_reps: working.map((s) => Math.min((s.reps ?? target) + 1, target)),
         status: 'holding',
         last_evaluated_workout_id: workoutId,
       });

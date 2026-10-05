@@ -36,7 +36,7 @@ beforeEach(() => {
 
 describe('boot', () => {
   it('migrates, seeds ~100 exercises with linked variation chains', () => {
-    expect(api.boot().schemaVersion).toBe(4);
+    expect(api.boot().schemaVersion).toBe(5);
     expect(api.listExercises().length).toBeGreaterThan(80);
     const push = ex('Push-up');
     expect(push.harder_variation_id).toBe(ex('Decline Push-up').id);
@@ -62,6 +62,30 @@ describe('boot', () => {
       expect(e.harder_variation_id).toBe(i < chain.length - 1 ? ex(chain[i + 1]).id : null);
       expect(e.easier_variation_id).toBe(i > 0 ? ex(chain[i - 1]).id : null);
     });
+  });
+
+  it('harder variations are actually harder at a capped dumbbell', () => {
+    const harder = (n: string) => { const h = ex(n).harder_variation_id; return h ? api.getExercise(h).name : null; };
+    expect(harder('DB Bench Press')).toBe('Paused DB Bench Press');
+    expect(harder('Paused DB Bench Press')).toBe('1½-Rep DB Bench Press');
+    expect(harder('Incline DB Press')).toBe('Paused Incline DB Press');
+    expect(harder('DB Shoulder Press')).toBe('Seated DB Z-Press');
+    expect(harder('Single-Arm DB Bench Press')).toBeNull();
+    expect(harder('Single-Arm DB Shoulder Press')).toBeNull();
+    expect(harder('DB Hip Thrust')).toBe('Single-Leg DB Hip Thrust');
+    expect(harder('DB Calf Raise')).toBe('Single-Leg DB Calf Raise');
+    expect(harder('Overhead DB Triceps Extension')).toBe('Single-Arm Overhead DB Extension');
+    expect(api.getExercise(ex('Seated DB Z-Press').easier_variation_id!).name).toBe('DB Shoulder Press');
+  });
+
+  it('existing installs move off retired links, but user-edited links are kept', () => {
+    // Simulate an older install: old built-in link on bench, a custom link on shoulder press.
+    api.saveExercise({ ...ex('Paused DB Bench Press'), easier_variation_id: null });
+    api.saveExercise({ ...ex('DB Bench Press'), harder_variation_id: ex('Single-Arm DB Bench Press').id });
+    api.saveExercise({ ...ex('DB Shoulder Press'), harder_variation_id: ex('Arnold Press')?.id ?? ex('Machine Shoulder Press').id });
+    api.seedExercises();
+    expect(ex('DB Bench Press').harder_variation_id).toBe(ex('Paused DB Bench Press').id);
+    expect(ex('DB Shoulder Press').harder_variation_id).toBe(ex('Machine Shoulder Press').id);
   });
 
   it('seeding is idempotent', () => {
@@ -94,9 +118,9 @@ describe('workout loop', () => {
     routineId = api.saveRoutine({
       name: 'Upper B',
       items: [
-        { exercise_id: ex('Incline DB Press').id, working_sets: 3, rep_min: 8, rep_max: 12 },
-        { exercise_id: ex('Lateral Raise').id, working_sets: 3, rep_min: 12, rep_max: 15, group_id: 'g1' },
-        { exercise_id: ex('Triceps Pushdown').id, working_sets: 3, rep_min: 10, rep_max: 12, group_id: 'g1' },
+        { exercise_id: ex('Incline DB Press').id, working_sets: 3, rep_max: 12 },
+        { exercise_id: ex('Lateral Raise').id, working_sets: 3, rep_max: 15, group_id: 'g1' },
+        { exercise_id: ex('Triceps Pushdown').id, working_sets: 3, rep_max: 12, group_id: 'g1' },
       ],
     });
   });
@@ -107,7 +131,7 @@ describe('workout loop', () => {
     expect(w.exercises).toHaveLength(3);
     expect(w.exercises[1].group_id).toBe(w.exercises[2].group_id);
     expect(w.exercises[0].sets.every((s) => s.suggested_weight_kg == null)).toBe(true);
-    expect(w.exercises[0].sets.map((s) => s.suggested_reps)).toEqual([8, 8, 8]);
+    expect(w.exercises[0].sets.map((s) => s.suggested_reps)).toEqual([12, 12, 12]);
     expect(asLb(w.exercises[0].cap_kg)).toBe(50);
 
     doSets(wid, 'Incline DB Press', [10, 9, 8], 45);
@@ -119,7 +143,7 @@ describe('workout loop', () => {
     const byName = Object.fromEntries(sum.changes.map((c) => [c.exercise_name, c]));
     expect(byName['Incline DB Press'].kind).toBe('baseline');
     expect(byName['Lateral Raise'].kind).toBe('up');
-    expect(byName['Lateral Raise'].reason).toBe('Hit 15/15/15 → +5 lb next time');
+    expect(byName['Lateral Raise'].reason).toBe('Hit 15/15/15 → +5 lb × 12 next time');
     expect(byName['Triceps Pushdown']).toBeUndefined(); // no sets → removed, not evaluated
     expect(sum.prs).toHaveLength(0); // first session is baseline
   });
@@ -148,12 +172,12 @@ describe('workout loop', () => {
     const c = sum.changes.find((x) => x.exercise_name === 'Incline DB Press')!;
     expect(c.kind).toBe('variation');
     expect(c.pending).toBe('variation');
-    expect(c.harder_variation?.name).toBe('Single-Arm Incline DB Press');
+    expect(c.harder_variation?.name).toBe('Paused Incline DB Press');
 
     api.respondVariation(c.routine_item_id, true);
     const r = api.getRoutine(routineId);
-    expect(r.items[0].exercise.name).toBe('Single-Arm Incline DB Press');
-    expect([r.items[0].working_sets, r.items[0].rep_min, r.items[0].rep_max]).toEqual([3, 8, 12]);
+    expect(r.items[0].exercise.name).toBe('Paused Incline DB Press');
+    expect([r.items[0].working_sets, r.items[0].rep_min, r.items[0].rep_max]).toEqual([3, 12, 12]);
     expect(r.items[0].state?.target_weight_kg).toBeNull();
     sum = api.getSummary(wid);
     expect(sum.changes[0].pending).toBeNull();
@@ -234,6 +258,28 @@ describe('workout loop', () => {
     const day = 86400000;
     expect(api.workoutsBetween(new Date(Date.now() - day).toISOString(), new Date(Date.now() + day).toISOString()).map((w) => w.id)).toEqual([wid]);
     expect(api.workoutsBetween(new Date(Date.now() + day).toISOString(), new Date(Date.now() + 2 * day).toISOString())).toEqual([]);
+  });
+
+  it('a rep range from an older routine collapses to its top', () => {
+    const rid = api.saveRoutine({ name: 'Old', items: [{ exercise_id: ex('DB Curl').id, rep_min: 8, rep_max: 12 }] });
+    expect(api.getRoutine(rid).items[0]).toMatchObject({ rep_min: 12, rep_max: 12 });
+  });
+
+  it('reps climb session to session, then weight goes up with fewer reps', () => {
+    const run = (weightLb: number | undefined, reps: number[]) => {
+      const wid = api.startWorkout({ routineId });
+      doSets(wid, 'Incline DB Press', reps, weightLb);
+      return api.finishWorkout(wid).changes.find((c) => c.exercise_name === 'Incline DB Press')!;
+    };
+    expect(run(40, [10, 10, 10]).reason).toBe('Baseline 40 lb · 10/10/10 · aim 11 next');
+    expect(run(undefined, [11, 11, 11]).reason).toBe('11/11/11 · +3 reps · aim 12 next');
+    expect(run(undefined, [11, 11, 11]).kind).toBe('miss'); // no gain → stall
+    const up = run(undefined, [12, 12, 12]);
+    expect(up.reason).toBe('Hit 12/12/12 → +5 lb × 11 next time');
+    const wid = api.startWorkout({ routineId });
+    const sets = api.getWorkout(wid).exercises[0].sets;
+    expect(sets.map((s) => [asLb(s.suggested_weight_kg), s.suggested_reps])).toEqual([[45, 11], [45, 11], [45, 11]]);
+    api.discardWorkout(wid);
   });
 
   it('finishing with nothing completed is refused', () => {
@@ -359,7 +405,7 @@ describe('equipment + starter programs', () => {
     expect(new Set(equipmentOf(ids))).toEqual(new Set(['bodyweight']));
     const a = api.getRoutine(ids[0]).items;
     expect(a.map((i) => i.exercise.name)).toContain('Push-up');
-    expect(a.find((i) => i.exercise.name === 'Plank')).toMatchObject({ rep_min: 20, rep_max: 45 });
+    expect(a.find((i) => i.exercise.name === 'Plank')).toMatchObject({ rep_min: 45, rep_max: 45 });
   });
 
   it('dumbbells only → dumbbell + bodyweight exercises', () => {
@@ -406,8 +452,8 @@ describe('equipment + starter programs', () => {
 
   it('library filters by several muscles and sorts', () => {
     const list = api.listExercises({ musclesIn: ['calves', 'forearms'], equipmentIn: ['dumbbell'] });
-    expect(list.map((e) => e.name)).toEqual(['DB Calf Raise', 'DB Curl', 'DB Farmer Carry', 'DB Shrug', 'Hammer Curl']);
-    expect(api.listExercises({ musclesIn: ['calves', 'forearms'], equipmentIn: ['dumbbell'], sort: 'za' })[0].name).toBe('Hammer Curl');
+    expect(list.map((e) => e.name)).toEqual(['DB Calf Raise', 'DB Curl', 'DB Farmer Carry', 'DB Shrug', 'Hammer Curl', 'Single-Leg DB Calf Raise']);
+    expect(api.listExercises({ musclesIn: ['calves', 'forearms'], equipmentIn: ['dumbbell'], sort: 'za' })[0].name).toBe('Single-Leg DB Calf Raise');
   });
 
   it('library filter by owned equipment', () => {

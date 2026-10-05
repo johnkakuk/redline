@@ -137,6 +137,28 @@ interface SeedRow {
   secondary_muscles: Muscle[]; harder: string | null; default_rest_sec: number | null; notes: string | null;
 }
 
+/**
+ * Built-in "harder" links that earlier versions shipped and later replaced (exercise → old harder).
+ * Installs still on the old link get the new one; links the user changed are left alone.
+ */
+const RETIRED_SEED_LINKS: [string, string][] = [
+  ['DB Bench Press', 'Single-Arm DB Bench Press'],
+  ['Single-Arm DB Bench Press', 'Deficit Pause DB Press'],
+  ['Incline DB Press', 'Single-Arm Incline DB Press'],
+  ['DB Shoulder Press', 'Single-Arm DB Shoulder Press'],
+  ['Single-Arm DB Shoulder Press', 'Seated DB Z-Press'],
+];
+
+function retireOldLinks(db: Db) {
+  for (const [from, oldHarder] of RETIRED_SEED_LINKS) {
+    const a = seedId(from);
+    const b = seedId(oldHarder);
+    if (db.run('UPDATE exercises SET harder_variation_id = NULL WHERE id = ? AND harder_variation_id = ?', [a, b])) {
+      db.run('UPDATE exercises SET easier_variation_id = NULL WHERE id = ? AND easier_variation_id = ?', [b, a]);
+    }
+  }
+}
+
 /** Insert the seeded library (idempotent by name) and link variation chains. */
 export function seedExercises(db: Db): number {
   const s = getSettings(db);
@@ -157,6 +179,7 @@ export function seedExercises(db: Db): number {
       );
       inserted++;
     }
+    retireOldLinks(db);
     for (const r of rows) {
       if (!r.harder) continue;
       const a = ids.get(r.name)!;

@@ -53,8 +53,9 @@ export function getRoutine(db: Db, id: string): RoutineFull {
 
 function clampItem(i: RoutineItemInput) {
   const working_sets = Math.max(1, Math.min(20, Math.round(i.working_sets ?? 3)));
-  const rep_min = Math.max(1, Math.round(i.rep_min ?? 8));
-  const rep_max = Math.max(rep_min, Math.round(i.rep_max ?? 12));
+  // One rep target per exercise, stored in both columns. A range (e.g. from an older routine) keeps its top.
+  const rep_max = Math.max(1, Math.round(i.rep_max ?? i.rep_min ?? 10));
+  const rep_min = rep_max;
   return {
     working_sets, rep_min, rep_max,
     warmup_sets: Math.max(0, Math.min(3, Math.round(i.warmup_sets ?? 0))),
@@ -97,7 +98,7 @@ export function saveRoutine(db: Db, input: RoutineInput): string {
           db.run('UPDATE progression_state SET deleted_at = ? WHERE routine_item_id = ?', [new Date().toISOString(), prev.id]);
         } else if (prev.working_sets !== c.working_sets) {
           const st = getStateRow(db, prev.id);
-          if (st) writeState(db, { ...st, target_reps: resize(st.target_reps, c.working_sets, c.rep_min) });
+          if (st) writeState(db, { ...st, target_reps: resize(st.target_reps, c.working_sets, c.rep_max) });
         }
       } else {
         const itemId = raw.id && !existing.has(raw.id) && !db.get('SELECT 1 FROM routine_items WHERE id = ?', [raw.id]) ? raw.id : newId();
@@ -175,7 +176,7 @@ function stateOrInitial(db: Db, itemId: string): ProgressionState {
   const st = getStateRow(db, itemId);
   if (st) return st;
   const item = getItem(db, itemId);
-  return { ...initialState(item.rep_min, item.working_sets), routine_item_id: itemId, last_evaluated_workout_id: null };
+  return { ...initialState(item.rep_max, item.working_sets), routine_item_id: itemId, last_evaluated_workout_id: null };
 }
 
 export function setPinned(db: Db, itemId: string, pinned: boolean) {
@@ -189,7 +190,7 @@ export function setTarget(db: Db, itemId: string, weightKg: number | null, reps:
   writeState(db, {
     ...st,
     target_weight_kg: weightKg,
-    target_reps: reps ? resize(reps, item.working_sets, item.rep_min) : st.target_reps,
+    target_reps: reps ? resize(reps, item.working_sets, item.rep_max) : st.target_reps,
     status: 'holding',
     prompt_weight_kg: null,
     fail_streak: 0,
@@ -222,7 +223,7 @@ export function respondVariation(db: Db, itemId: string, accept: boolean) {
     );
     db.run('UPDATE routine_items SET exercise_id = ? WHERE id = ?', [ex.harder_variation_id, itemId]);
     writeState(db, {
-      ...initialState(item.rep_min, item.working_sets),
+      ...initialState(item.rep_max, item.working_sets),
       routine_item_id: itemId,
       target_weight_kg: last?.weight_kg ?? null,
       last_evaluated_workout_id: st.last_evaluated_workout_id,

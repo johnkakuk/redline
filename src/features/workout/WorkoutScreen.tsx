@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { ArrowUpDown, Ellipsis, Plus, StickyNote, Trash2 } from 'lucide-react';
+import { ArrowUpDown, Ellipsis, Play, Plus, StickyNote, Trash2 } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { Navigate, useNavigate } from 'react-router-dom';
 import { act, notifyWrite, queryClient, useActiveWorkoutId, useUnits } from '../../app/queries';
@@ -17,6 +17,7 @@ import { ExerciseCard, SupersetLabel, type CardHandlers } from './ExerciseCard';
 import { blocksOf, currentStep, nextStepAfter } from './flow';
 import { RestTimer } from './RestTimer';
 import { useRest, useWakeLock } from './restStore';
+import { useSession } from './sessionStore';
 import { useElapsed } from './useElapsed';
 
 type Edit = { weId: string; setId: string; field: 'weight' | 'reps' };
@@ -44,11 +45,29 @@ function LiveWorkout({ w }: { w: WorkoutFull }) {
   const [historyFor, setHistoryFor] = useState<WorkoutExerciseFull | null>(null);
   const [targetFor, setTargetFor] = useState<WorkoutExerciseFull | null>(null);
   const startRest = useRest((s) => s.start);
+  const session = useSession();
+  const running = session.running && w.exercises.some((e) => e.sets.some((x) => x.id === session.running!.setId && !x.completed_at)) ? session.running : null;
+  const started = !!session.started[w.id] || w.exercises.some((e) => e.sets.some((x) => x.completed_at));
+  /** Cards the user opened or closed by hand; everything else follows the guided order. */
+  const [manual, setManual] = useState<Record<string, boolean>>({});
   useWakeLock(true);
 
   const key = ['workout', w.id];
   const current = useMemo(() => currentStep(w), [w]);
   const blocks = useMemo(() => blocksOf(w.exercises), [w.exercises]);
+  // Guided order: once started, the block holding the current set is open; finished ones fold away.
+  // With everything logged, all cards open for a final review.
+  const currentBlock = useMemo(() => {
+    const b = blocks.find((x) => x.members.some((m) => m.id === current?.weId));
+    return new Set(b?.members.map((m) => m.id) ?? []);
+  }, [blocks, current]);
+  // Follow the guided order: bring the current set into view once its card has opened.
+  useEffect(() => {
+    if (started && current?.setId) scrollToSet(current.setId);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [started, current?.setId]);
+  const isExpanded = (weId: string) => manual[weId] ?? (started && (current == null || currentBlock.has(weId)));
+  const toggleExpand = (weId: string) => setManual((m) => ({ ...m, [weId]: !isExpanded(weId) }));
 
   const patchSet = (setId: string, patch: Partial<WorkoutSet>) =>
     queryClient.setQueryData<WorkoutFull>(key, (old) => old && {
@@ -62,20 +81,20 @@ function LiveWorkout({ w }: { w: WorkoutFull }) {
     requestAnimationFrame(() => document.querySelector(`[data-set="${setId}"]`)?.scrollIntoView({ behavior: 'smooth', block: 'center' }));
   };
 
-  const complete = async (we: WorkoutExerciseFull, s: WorkoutSet) => {
+  /** Log a set. Returns false if it still needs a weight or reps (the keypad opens instead). */
+  const complete = async (we: WorkoutExerciseFull, s: WorkoutSet): Promise<boolean> => {
     const weight = s.weight_kg ?? s.suggested_weight_kg;
     const reps = s.reps ?? s.suggested_reps;
-    if (reps == null) { setEdit({ weId: we.id, setId: s.id, field: 'reps' }); return; }
+    if (reps == null) { setEdit({ weId: we.id, setId: s.id, field: 'reps' }); return false; }
     if (weight == null && we.exercise.load_type !== 'bodyweight' && we.exercise.load_type !== 'bodyweight_plus') {
       setEdit({ weId: we.id, setId: s.id, field: 'weight' });
-      return;
+      return false;
     }
     patchSet(s.id, { completed_at: new Date().toISOString(), weight_kg: weight, reps });
     const next = nextStepAfter(w, s.id);
     // Supersets: rest only after the last exercise in the group for this round.
     const sameGroupNext = !!(next && we.group_id && next.groupId === we.group_id && next.weId !== we.id);
     if (s.kind === 'working' && !sameGroupNext) startRest(we.rest_sec, we.exercise.name);
-    if (next) scrollToSet(next.setId);
     try {
       const { prs } = await db.completeSet(s.id);
       if (prs.length) {
@@ -88,16 +107,30 @@ function LiveWorkout({ w }: { w: WorkoutFull }) {
     }
     notifyWrite();
     void refresh();
+    return true;
+  };
+
+  const startWorkout = () => {
+    session.start(w.id);
+    void db.beginWorkout(w.id).then(() => refresh());
+    const first = currentStep(w);
+    if (first) scrollToSet(first.setId);
   };
 
   const h: CardHandlers = {
     onEdit: (we, s, field) => setEdit({ weId: we.id, setId: s.id, field }),
-    onToggle: (we, s) => {
-      if (s.completed_at) {
-        patchSet(s.id, { completed_at: null });
-        setPrSets((p) => { const n = new Set(p); n.delete(s.id); return n; });
-        void act(db.uncompleteSet(s.id));
-      } else void complete(we, s);
+    onPlay: (_we, s) => {
+      if (!started) startWorkout();
+      useRest.getState().skip(); // resting is over once the next set begins
+      session.play(s.id);
+    },
+    onStop: async (we, s) => {
+      if (await complete(we, s)) session.stop();
+    },
+    onUndo: (_we, s) => {
+      patchSet(s.id, { completed_at: null });
+      setPrSets((p) => { const n = new Set(p); n.delete(s.id); return n; });
+      void act(db.uncompleteSet(s.id));
     },
     onAddSet: (we) => void act(db.addSet(we.id, 'working')),
     onRemoveSet: (s) => void act(db.removeSet(s.id)),
@@ -118,11 +151,14 @@ function LiveWorkout({ w }: { w: WorkoutFull }) {
   const fields: KeypadField[] = [];
   if (editWe && editSet) {
     if (editWe.exercise.load_type !== 'bodyweight') {
-      const cap = editWe.cap_kg != null ? toDisplay(editWe.cap_kg) : null;
+      // The cap limits suggestions only: you can always log what you actually lifted.
+      const perHand = editWe.exercise.load_type === 'per_hand';
       fields.push({
         key: 'weight', label: 'Weight', unit: units, decimals: true,
         value: toDisplay(editSet.weight_kg), placeholder: toDisplay(editSet.suggested_weight_kg),
-        step: toDisplay(editWe.increment_kg) ?? 5, max: cap, maxHint: cap != null ? `Max ${cap} ${units}` : undefined,
+        step: toDisplay(editWe.increment_kg) ?? 5,
+        softMax: editWe.cap_kg != null ? toDisplay(editWe.cap_kg) : null,
+        alt: perHand ? { baseLabel: 'Each', altLabel: 'Both', factor: 2 } : undefined,
       });
     }
     fields.push({ key: 'reps', label: 'Reps', value: editSet.reps, placeholder: editSet.suggested_reps, step: 1, max: 999 });
@@ -145,6 +181,7 @@ function LiveWorkout({ w }: { w: WorkoutFull }) {
     const next = nextStepAfter(fresh, editSet.id);
     if (!next) { setEdit(null); return; }
     const nwe = fresh.exercises.find((e) => e.id === next.weId)!;
+    setManual((m) => ({ ...m, [next.weId]: true }));
     setEdit({ weId: next.weId, setId: next.setId, field: nwe.exercise.load_type === 'bodyweight' ? 'reps' : 'weight' });
     scrollToSet(next.setId);
   };
@@ -156,6 +193,7 @@ function LiveWorkout({ w }: { w: WorkoutFull }) {
     try {
       await db.finishWorkout(w.id);
       useRest.getState().skip();
+      session.forget(w.id);
       // Leave first: once queries refresh there is no active workout and this screen would redirect home.
       nav(`/workout/${w.id}/summary`, { replace: true });
       void queryClient.invalidateQueries();
@@ -169,6 +207,7 @@ function LiveWorkout({ w }: { w: WorkoutFull }) {
   const discard = async () => {
     await act(db.discardWorkout(w.id));
     useRest.getState().skip();
+    session.forget(w.id);
     nav('/', { replace: true });
   };
 
@@ -183,7 +222,7 @@ function LiveWorkout({ w }: { w: WorkoutFull }) {
       <div className="wk-head">
         <div className="grow">
           <div className="micro ellipsis">{w.name}</div>
-          <div className="num" aria-label="Elapsed">{fmtDuration(elapsed)}</div>
+          <div className="num" aria-label="Elapsed">{started ? fmtDuration(elapsed) : <span className="dim">Ready</span>}</div>
         </div>
         <button type="button" className="icon-btn" aria-label="Workout options" onClick={() => setMenu(true)}><Ellipsis size={22} /></button>
         <Button size="sm" onClick={() => (pending > 0 && doneCount > 0 ? setConfirm('finish') : void finish())}>Finish</Button>
@@ -198,11 +237,13 @@ function LiveWorkout({ w }: { w: WorkoutFull }) {
           <div className="ss-group" key={b.members[0].id}>
             <SupersetLabel letter={b.letter} />
             {b.members.map((m, i) => (
-              <ExerciseCard key={m.id} we={m} label={`${b.letter}${i + 1}`} currentSetId={current?.setId ?? null} prSets={prSets} h={h} />
+              <ExerciseCard key={m.id} we={m} label={`${b.letter}${i + 1}`} currentSetId={started ? current?.setId ?? null : null} running={running} prSets={prSets} h={h}
+                expanded={isExpanded(m.id)} onToggleExpand={() => toggleExpand(m.id)} />
             ))}
           </div>
         ) : (
-          <ExerciseCard key={b.members[0].id} we={b.members[0]} currentSetId={current?.setId ?? null} prSets={prSets} h={h} />
+          <ExerciseCard key={b.members[0].id} we={b.members[0]} currentSetId={started ? current?.setId ?? null : null} running={running} prSets={prSets} h={h}
+            expanded={isExpanded(b.members[0].id)} onToggleExpand={() => toggleExpand(b.members[0].id)} />
         ),
       )}
 
@@ -210,7 +251,9 @@ function LiveWorkout({ w }: { w: WorkoutFull }) {
         <Button variant="secondary" block style={{ marginTop: 16 }} onClick={() => setPicker({ mode: 'add' })}><Plus size={18} />Add exercise</Button>
       )}
 
-      <RestTimer />
+      {started ? <RestTimer /> : w.exercises.length > 0 && (
+        <div className="start-bar"><Button block onClick={startWorkout}><Play size={20} fill="currentColor" />Start workout</Button></div>
+      )}
 
       <KeypadSheet
         open={!!editSet && fields.length > 0}
@@ -279,7 +322,7 @@ function LiveWorkout({ w }: { w: WorkoutFull }) {
             step: toDisplay(targetFor.increment_kg) ?? 5, max: targetFor.cap_kg != null ? toDisplay(targetFor.cap_kg) : null,
             maxHint: targetFor.cap_kg != null ? `Max ${fw(targetFor.cap_kg)} ${units}` : undefined,
           }] : []),
-          { key: 'reps', label: 'Reps', value: targetFor.state?.target_reps[0] ?? targetFor.item?.rep_min ?? null, step: 1 },
+          { key: 'reps', label: 'Reps', value: targetFor.state?.target_reps[0] ?? targetFor.item?.rep_max ?? null, step: 1 },
         ] : []}
         nextLabel="Save"
         onClose={() => setTargetFor(null)}

@@ -243,7 +243,7 @@ button.list-row:active, a.list-row:active { background: var(--bg-2); }
 .kp-step { width: 64px; height: 48px; border-radius: var(--r-md); background: var(--bg-2); font-family: var(--font-num); font-size: 20px; font-weight: var(--fw-semibold); }
 .kp-step:active:not(:disabled) { background: var(--bg-3); }
 .kp-step:disabled { opacity: 0.35; }
-.kp-hint { text-align: center; font-size: var(--fs-caption); color: var(--text-2); min-height: 18px; display: flex; align-items: center; justify-content: center; gap: 4px; }
+.kp-hint { text-align: center; font-size: var(--fs-caption); color: var(--text-2); min-height: 18px; display: flex; align-items: center; justify-content: center; gap: 4px; flex-wrap: wrap; padding: 0 var(--s-2); }
 .kp-keys { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--s-2); margin-top: var(--s-3); }
 .kp-key { height: 64px; border-radius: var(--r-md); background: var(--bg-2); font-family: var(--font-num); font-size: 28px; font-weight: var(--fw-semibold); display: flex; align-items: center; justify-content: center; }
 .kp-key:active { background: var(--bg-3); }
@@ -354,7 +354,7 @@ button.day:active { background: var(--bg-2); }
 .item-card { background: var(--bg-1); border-radius: var(--r-lg); }
 .item-card + .item-card { margin-top: var(--s-2); }
 .item-head { display: flex; align-items: center; gap: var(--s-2); padding: var(--s-2) var(--s-2) var(--s-2) var(--s-3); min-height: 60px; }
-.item-head .grow { cursor: pointer; }
+.item-head { cursor: pointer; }
 .item-body { padding: 0 var(--s-3) var(--s-3); border-top: 1px solid var(--border-1); padding-top: var(--s-3); }
 .item-card.selected { box-shadow: inset 0 0 0 2px var(--red-400); }
 .item-card.grouped { border-left: 3px solid var(--red-500); }
@@ -472,3 +472,23 @@ button.day:active { background: var(--bg-2); }
   max-width: calc(560px - 2 * var(--gutter)); margin: calc(var(--safe-top) + var(--s-2)) auto calc(-1 * var(--safe-top));
   width: calc(100% - 2 * var(--gutter)); background: #2A2110;
 }
+
+/* Live workout: collapsible cards + play/stop sets (WHOOP-style) */
+.ex-head { cursor: pointer; }
+.ex-card.is-current { box-shadow: inset 0 0 0 1px var(--border-2); }
+.ex-card.is-done h3 { color: var(--text-2); }
+.ex-progress { display: flex; align-items: center; gap: 4px; width: 100%; margin-top: var(--s-2); min-height: 32px; }
+.ex-progress i { width: 18px; height: 6px; border-radius: 3px; background: var(--bg-3); }
+.ex-progress i.on { background: var(--red-500); }
+.ex-progress i.live { background: var(--red-400); animation: pulse 1s var(--ease-out) infinite; }
+.ex-progress .caption { margin-left: var(--s-2); flex: 1; text-align: left; }
+.set-btn { width: 40px; height: 40px; margin: 0 auto; border-radius: 50%; display: flex; align-items: center; justify-content: center; border: 1.5px solid var(--border-2); color: var(--text-3); }
+.set-btn.play.next { background: var(--red-500); border-color: var(--red-500); color: #fff; }
+.set-btn.play:active { transform: scale(0.94); }
+.set-btn.stop { background: var(--text-1); border-color: var(--text-1); color: var(--bg-0); animation: glow-pulse 1.6s var(--ease-out) infinite; }
+.set-btn.done { border-radius: 10px; background: var(--red-500); border-color: var(--red-500); color: #fff; animation: check-pop var(--dur-base) var(--ease-spring), glow 320ms var(--ease-out); }
+.set-row.warm .set-btn.done { background: var(--bg-3); border-color: var(--bg-3); color: var(--text-2); animation: none; }
+.set-row.live { background: var(--bg-3); box-shadow: inset 0 0 0 1px var(--red-400); }
+.set-clock { color: var(--red-400); font-size: 18px; }
+.start-bar { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(var(--safe-bottom) + var(--s-3)); z-index: 45; width: calc(100% - 2 * var(--gutter)); max-width: calc(560px - 2 * var(--gutter)); }
+.start-bar .btn { height: 60px; font-size: 19px; box-shadow: var(--shadow-sheet); }

@@ -5,7 +5,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { act, useUnits } from '../../app/queries';
 import { db } from '../../db/client';
 import { PR_LABEL } from '../../engine/prs';
-import { fmtDay, fmtMinutes } from '../../shared/time';
+import { fmtDay, fmtMinutes, localDate } from '../../shared/time';
 import type { ProgressionChange } from '../../shared/types';
 import { fmtCompact } from '../../shared/units';
 import { Badge, Button, Card, PrBadge } from '../../ui/primitives';
@@ -36,6 +36,16 @@ export function SummaryScreen({ history }: { history?: boolean }) {
   const [confirmDelete, setConfirmDelete] = useState(false);
   const { data: s } = useQuery({ queryKey: ['summary', id], queryFn: () => db.getSummary(id!) });
   const { data: full } = useQuery({ queryKey: ['workout', id], queryFn: () => db.getWorkout(id!), enabled: !!history });
+  // Quick-log entries (bodyweight, calories, protein) from the same calendar day.
+  const day = s ? localDate(s.workout.started_at) : null;
+  const { data: dayLog } = useQuery({
+    queryKey: ['dayLog', day],
+    enabled: !!history && !!day,
+    queryFn: async () => ({
+      bodyweight: (await db.listBodyweight(day!)).filter((e) => e.date === day).at(-1) ?? null,
+      nutrition: await db.getNutrition(day!),
+    }),
+  });
   if (!s) return <div className="screen" aria-busy="true" />;
   const live = s.changes.filter((c) => !c.undone);
   const prompts = live.filter((c) => c.pending);
@@ -117,6 +127,19 @@ export function SummaryScreen({ history }: { history?: boolean }) {
             Add to routine
           </Button>
         </Card>
+      )}
+
+      {history && dayLog && (dayLog.bodyweight || dayLog.nutrition?.calories != null || dayLog.nutrition?.protein_g != null) && (
+        <div className="section">
+          <div className="section-label"><span className="micro">That day</span></div>
+          <div className="stats">
+            <div className="stat"><span className="micro">Weight</span>
+              <span className="num">{dayLog.bodyweight ? <>{w(dayLog.bodyweight.weight_kg)}<span className="unit">{units}</span></> : '—'}</span></div>
+            <div className="stat"><span className="micro">Calories</span><span className="num">{dayLog.nutrition?.calories ?? '—'}</span></div>
+            <div className="stat"><span className="micro">Protein</span>
+              <span className="num">{dayLog.nutrition?.protein_g != null ? <>{dayLog.nutrition.protein_g}<span className="unit">g</span></> : '—'}</span></div>
+          </div>
+        </div>
       )}
 
       {history && full && (

@@ -35,12 +35,12 @@ const fingerprint = (name: string, notes: string, items: Draft[]) =>
   JSON.stringify([name, notes, items.map(({ exercise: _e, state: _s, isNew: _n, ...rest }) => rest)]);
 
 function defaultsFor(ex: Exercise): Partial<RoutineItem> {
-  if (ex.load_type === 'bodyweight') return { working_sets: 3, rep_min: 8, rep_max: 15 };
-  if (ex.equipment === 'barbell' && ex.default_rest_sec && ex.default_rest_sec >= 150) return { working_sets: 3, rep_min: 5, rep_max: 8, warmup_sets: 3 };
+  if (ex.load_type === 'bodyweight') return { working_sets: 3, rep_min: 12, rep_max: 12 };
+  if (ex.equipment === 'barbell' && ex.default_rest_sec && ex.default_rest_sec >= 150) return { working_sets: 3, rep_min: 5, rep_max: 5, warmup_sets: 3 };
   if (['cable', 'machine'].includes(ex.equipment) || ['side_delts', 'biceps', 'triceps', 'calves', 'rear_delts', 'abs'].includes(ex.primary_muscle)) {
-    return { working_sets: 3, rep_min: 10, rep_max: 15 };
+    return { working_sets: 3, rep_min: 12, rep_max: 12 };
   }
-  return { working_sets: 3, rep_min: 8, rep_max: 12 };
+  return { working_sets: 3, rep_min: 10, rep_max: 10 };
 }
 
 export function RoutineEditor() {
@@ -234,24 +234,29 @@ function ItemCard({ it, handle, label, open, selecting, selected, onToggleOpen, 
   const [kp, setKp] = useState<null | 'inc' | 'cap'>(null);
   const ex = it.exercise;
   const ws = it.working_sets ?? 3;
-  const rmin = it.rep_min ?? 8;
-  const rmax = it.rep_max ?? 12;
+  // One rep target per exercise (stored as rep_min = rep_max).
+  const reps = it.rep_max ?? 10;
   const rest = it.rest_sec ?? ex.default_rest_sec ?? settings?.default_rest_sec ?? 90;
   const defInc = ex.default_increment_kg ?? settings?.default_increment[ex.equipment] ?? null;
   const fmtRest = (s: number) => (s >= 60 ? `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}` : `${s}s`);
   return (
     <div className={`item-card ${selected ? 'selected' : ''} ${label ? 'grouped' : ''}`}>
-      <div className="item-head">
-        {selecting && <span className={`select-dot ${selected ? 'on' : ''}`} onClick={onToggleOpen}>{selected && <Check size={14} strokeWidth={3} />}</span>}
-        <div className="grow" onClick={onToggleOpen} role="button" tabIndex={0} aria-expanded={open}>
+      {/* The whole header (name, badge, arrow) toggles; only the drag handle doesn't. */}
+      <div className="item-head" onClick={(e) => { if (!(e.target as HTMLElement).closest('.drag-handle')) onToggleOpen(); }}>
+        {selecting && <span className={`select-dot ${selected ? 'on' : ''}`}>{selected && <Check size={14} strokeWidth={3} />}</span>}
+        <div className="grow">
           <div style={{ fontWeight: 600 }}>{label && <span className="micro ex-label">{label}</span>}{ex.name}</div>
           <div className="caption">
-            {ws} × {rmin}–{rmax}{(it.warmup_sets ?? 0) > 0 ? ` · ${it.warmup_sets} warm-up` : ''} · rest {fmtRest(rest)}
+            {ws} × {reps}{(it.warmup_sets ?? 0) > 0 ? ` · ${it.warmup_sets} warm-up` : ''} · rest {fmtRest(rest)}
             {it.progression_mode === 'none' ? ' · manual' : ''}
           </div>
         </div>
         {it.state && <StatusBadge status={it.state.status} pinned={it.state.pinned} />}
-        {!selecting && (open ? <ChevronUp size={18} className="dim" /> : <ChevronDown size={18} className="dim" />)}
+        {!selecting && (
+          <button type="button" className="icon-btn" style={{ width: 36 }} aria-expanded={open} aria-label={open ? `Collapse ${ex.name}` : `Expand ${ex.name}`}>
+            {open ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
+          </button>
+        )}
         {handle}
       </div>
       {open && !selecting && (
@@ -259,12 +264,11 @@ function ItemCard({ it, handle, label, open, selecting, selected, onToggleOpen, 
           <div className="cfg-grid">
             <div><span className="micro">Working sets</span><Stepper label="sets" value={ws} min={1} max={10} onChange={(v) => onPatch({ working_sets: v })} /></div>
             <div><Term k="warmups" micro>Warm-up sets</Term><Stepper label="warm-ups" value={it.warmup_sets ?? 0} min={0} max={3} onChange={(v) => onPatch({ warmup_sets: v })} /></div>
-            <div><Term k="rep_range" micro>Rep min</Term><Stepper label="rep min" value={rmin} min={1} max={50} onChange={(v) => onPatch({ rep_min: v, rep_max: Math.max(v, rmax) })} /></div>
-            <div><Term k="rep_range" micro>Rep max</Term><Stepper label="rep max" value={rmax} min={rmin} max={60} onChange={(v) => onPatch({ rep_max: v })} /></div>
+            <div><Term k="rep_range" micro>Reps</Term><Stepper label="reps" value={reps} min={1} max={60} onChange={(v) => onPatch({ rep_min: v, rep_max: v })} /></div>
             <div><Term k="default_rest" micro>Rest</Term><Stepper label="rest" value={rest} min={0} max={600} step={15} format={fmtRest} onChange={(v) => onPatch({ rest_sec: v })} /></div>
             <div>
               <Term k="progression" micro>Progression</Term>
-              <Segmented small value={it.progression_mode ?? 'double'} options={[{ value: 'double', label: 'Double' }, { value: 'none', label: 'Off' }]} onChange={(v) => onPatch({ progression_mode: v })} />
+              <Segmented small value={it.progression_mode ?? 'double'} options={[{ value: 'double', label: 'Auto' }, { value: 'none', label: 'Off' }]} onChange={(v) => onPatch({ progression_mode: v })} />
             </div>
             {ex.load_type !== 'bodyweight' && (
               <>
@@ -277,7 +281,9 @@ function ItemCard({ it, handle, label, open, selecting, selected, onToggleOpen, 
               </>
             )}
           </div>
-          <Field label="Notes"><input className="input" value={it.notes ?? ''} onChange={(e) => onPatch({ notes: e.target.value })} placeholder="Cues, seat height…" /></Field>
+          <div style={{ marginTop: 16 }}>
+            <Field label="Notes"><input className="input" value={it.notes ?? ''} onChange={(e) => onPatch({ notes: e.target.value })} placeholder="Cues, seat height…" /></Field>
+          </div>
           {it.state?.target_weight_kg != null && (
             <div className="caption" style={{ marginTop: 10 }}>Next target: {w(it.state.target_weight_kg, true)} × {it.state.target_reps.join('/')}{it.state.pinned && <Badge tone="neutral">Pinned</Badge>}</div>
           )}

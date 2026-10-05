@@ -15,15 +15,18 @@ Barbell Hip Thrust|barbell|total|glutes|hamstrings||120
 Good Morning|barbell|total|hamstrings|lower_back,glutes||120
 Barbell Curl|barbell|total|biceps|forearms||
 EZ-Bar Skull Crusher|barbell|total|triceps|||
-DB Bench Press|dumbbell|per_hand|chest|triceps,front_delts|Single-Arm DB Bench Press|120
-Single-Arm DB Bench Press|dumbbell|per_hand|chest|triceps,front_delts,obliques|Deficit Pause DB Press|120
+DB Bench Press|dumbbell|per_hand|chest|triceps,front_delts|Paused DB Bench Press|120
+Paused DB Bench Press|dumbbell|per_hand|chest|triceps,front_delts|1½-Rep DB Bench Press|120
+1½-Rep DB Bench Press|dumbbell|per_hand|chest|triceps,front_delts||120
+Single-Arm DB Bench Press|dumbbell|per_hand|chest|triceps,front_delts,obliques||120
 Deficit Pause DB Press|dumbbell|per_hand|chest|triceps,front_delts||120
-Incline DB Press|dumbbell|per_hand|chest|front_delts,triceps|Single-Arm Incline DB Press|120
+Incline DB Press|dumbbell|per_hand|chest|front_delts,triceps|Paused Incline DB Press|120
+Paused Incline DB Press|dumbbell|per_hand|chest|front_delts,triceps||120
 Single-Arm Incline DB Press|dumbbell|per_hand|chest|front_delts,triceps,obliques||120
 DB Floor Press|dumbbell|per_hand|chest|triceps||
 DB Fly|dumbbell|per_hand|chest|front_delts||
-DB Shoulder Press|dumbbell|per_hand|front_delts|side_delts,triceps|Single-Arm DB Shoulder Press|120
-Single-Arm DB Shoulder Press|dumbbell|per_hand|front_delts|side_delts,triceps,obliques|Seated DB Z-Press|120
+DB Shoulder Press|dumbbell|per_hand|front_delts|side_delts,triceps|Seated DB Z-Press|120
+Single-Arm DB Shoulder Press|dumbbell|per_hand|front_delts|side_delts,triceps,obliques||120
 Seated DB Z-Press|dumbbell|per_hand|front_delts|side_delts,triceps,abs||120
 Lateral Raise|dumbbell|per_hand|side_delts||Lean-Away Lateral Raise|
 Lean-Away Lateral Raise|dumbbell|per_hand|side_delts|||
@@ -35,7 +38,8 @@ DB Shrug|dumbbell|per_hand|traps|forearms||
 DB Curl|dumbbell|per_hand|biceps|forearms|Incline DB Curl|
 Incline DB Curl|dumbbell|per_hand|biceps|||
 Hammer Curl|dumbbell|per_hand|biceps|forearms||
-Overhead DB Triceps Extension|dumbbell|total|triceps|||
+Overhead DB Triceps Extension|dumbbell|total|triceps||Single-Arm Overhead DB Extension|
+Single-Arm Overhead DB Extension|dumbbell|total|triceps|||
 DB Skull Crusher|dumbbell|per_hand|triceps|||
 Goblet Squat|dumbbell|total|quads|glutes,adductors|DB Bulgarian Split Squat|120
 DB Bulgarian Split Squat|dumbbell|per_hand|quads|glutes,adductors|Pause Bulgarian Split Squat|120
@@ -44,8 +48,10 @@ DB Walking Lunge|dumbbell|per_hand|quads|glutes,hamstrings||
 DB Step-Up|dumbbell|per_hand|quads|glutes||
 DB RDL|dumbbell|per_hand|hamstrings|glutes,lower_back|Single-Leg DB RDL|120
 Single-Leg DB RDL|dumbbell|per_hand|hamstrings|glutes,lower_back||120
-DB Hip Thrust|dumbbell|total|glutes|hamstrings||
-DB Calf Raise|dumbbell|per_hand|calves|||
+DB Hip Thrust|dumbbell|total|glutes|hamstrings|Single-Leg DB Hip Thrust|
+Single-Leg DB Hip Thrust|dumbbell|total|glutes|hamstrings||
+DB Calf Raise|dumbbell|per_hand|calves||Single-Leg DB Calf Raise|
+Single-Leg DB Calf Raise|dumbbell|total|calves|||
 DB Farmer Carry|dumbbell|per_hand|forearms|traps,abs||
 KB Swing|kettlebell|total|glutes|hamstrings,lower_back|Single-Arm KB Swing|
 Single-Arm KB Swing|kettlebell|total|glutes|hamstrings,lower_back,obliques||
@@ -106,6 +112,12 @@ Band Triceps Pushdown|band|total|triceps|||
 `.trim().split('\n');
 
 const notes = {
+  'Paused DB Bench Press': 'Pause 2 seconds with the dumbbells at your chest, no bounce.',
+  '1½-Rep DB Bench Press': 'Lower all the way, press halfway up, lower again, then press to lockout. That is one rep.',
+  'Paused Incline DB Press': 'Pause 2 seconds at the bottom, no bounce.',
+  'Single-Leg DB Hip Thrust': 'One foot planted, dumbbell on the hips. Count each side as a set or log one side.',
+  'Single-Leg DB Calf Raise': 'Hold the dumbbell on the working side; full stretch at the bottom.',
+  'Single-Arm Overhead DB Extension': 'One dumbbell, one arm. Elbow points up the whole time.',
   Plank: 'Log seconds as reps.',
   'Side Plank': 'Log seconds per side as reps.',
   'Dead Bug': 'Low back stays flat on the floor. Count each side as one rep.',
