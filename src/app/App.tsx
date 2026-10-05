@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
-import { Activity, Dumbbell, Scale, Settings as SettingsIcon, TrendingUp, TriangleAlert } from 'lucide-react';
-import { useEffect } from 'react';
+import { Activity, Dumbbell, Scale, Settings as SettingsIcon, TrendingUp, TriangleAlert, X } from 'lucide-react';
+import { useEffect, useState } from 'react';
 import { HashRouter, Navigate, NavLink, Outlet, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
 import { db } from '../db/client';
 import { BodyScreen } from '../features/body/BodyScreen';
@@ -70,11 +70,13 @@ function TabLayout() {
 
 function StorageWarning() {
   const { data } = useQuery({ queryKey: ['boot'], queryFn: () => db.boot() });
-  if (data?.vfs !== 'memory') return null;
+  const [hidden, setHidden] = useState(false);
+  if (data?.vfs !== 'memory' || hidden) return null;
   return (
-    <div className="banner" style={{ position: 'fixed', left: 16, right: 16, bottom: 'calc(var(--tabbar-h) + var(--safe-bottom) + 76px)', zIndex: 50 }} role="alert">
+    <div className="banner storage-banner" role="alert">
       <TriangleAlert size={16} style={{ flex: 'none', marginTop: 1 }} />
-      <span>Storage unavailable: data won’t be saved. Close other Redline tabs and reload. {data.error ? `(${data.error})` : ''}</span>
+      <span className="grow">Not saving: storage is unavailable (private browsing, or Redline is open in another tab). Close other tabs and reload.</span>
+      <button type="button" className="icon-btn" style={{ width: 28, height: 28, margin: -4, color: 'inherit' }} aria-label="Dismiss" onClick={() => setHidden(true)}><X size={16} /></button>
     </div>
   );
 }

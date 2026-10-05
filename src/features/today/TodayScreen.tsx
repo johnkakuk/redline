@@ -9,8 +9,10 @@ import { addDays, fmtDay, localDate, startOfWeek } from '../../shared/time';
 import { fmtCompact } from '../../shared/units';
 import { KeypadSheet } from '../../ui/Keypad';
 import { Button, Card, Delta, EmptyState, ListRow, PrBadge } from '../../ui/primitives';
+import { Term } from '../../ui/InfoTip';
 import { Screen } from '../../ui/Screen';
 import { toast } from '../../ui/toast';
+import { StarterProgramSheet } from '../onboarding/equipment';
 
 const DOW = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
 
@@ -27,6 +29,7 @@ export function TodayScreen() {
   const bw = useQuery({ queryKey: ['latestBw'], queryFn: () => db.latestBodyweightKg() }).data ?? null;
   const nutrition = useQuery({ queryKey: ['nutrition', today], queryFn: () => db.getNutrition(today) }).data;
   const [log, setLog] = useState<null | 'bw' | 'cal' | 'protein'>(null);
+  const [starter, setStarter] = useState(false);
 
   const start = async (routineId: string | null) => {
     const id = await act(db.startWorkout({ routineId }));
@@ -65,7 +68,8 @@ export function TodayScreen() {
         ) : (
           <Card>
             <EmptyState text="No routines yet. Build one to get pre-filled sets and automatic progression."
-              action={<div className="stack-sm"><Button block onClick={() => nav('/routines/new')}><Plus size={18} />Create routine</Button>
+              action={<div className="stack-sm"><Button block onClick={() => setStarter(true)}>Use a starter program</Button>
+                <Button variant="secondary" block onClick={() => nav('/routines/new')}><Plus size={18} />Create routine</Button>
                 <Button variant="ghost" block onClick={() => void start(null)}>Start empty workout</Button></div>} />
           </Card>
         )}
@@ -80,7 +84,7 @@ export function TodayScreen() {
             {prev && prev.sets > 0 && <Delta value={(cur?.sets ?? 0) - prev.sets} format={(v) => String(v)} />}
           </div>
           <div className="stat">
-            <span className="micro">Tonnage</span><span className="num">{fmtCompact(toDisplay(cur?.tonnage_kg ?? 0) ?? 0)}</span>
+            <Term k="tonnage" micro>Tonnage</Term><span className="num">{fmtCompact(toDisplay(cur?.tonnage_kg ?? 0) ?? 0)}</span>
             {prev && prev.tonnage_kg > 0 && <Delta value={((cur?.tonnage_kg ?? 0) - prev.tonnage_kg) / prev.tonnage_kg * 100} format={(v) => `${Math.round(v)}%`} />}
           </div>
         </div>
@@ -118,6 +122,7 @@ export function TodayScreen() {
         </div>
       )}
 
+      <StarterProgramSheet open={starter} onClose={() => setStarter(false)} />
       <KeypadSheet open={log === 'bw'} title="Bodyweight" subtitle={fmtDay(today)} onClose={() => setLog(null)} nextLabel="Save"
         fields={[{ key: 'v', label: 'Bodyweight', unit: units, decimals: true, value: null, placeholder: toDisplay(bw), step: units === 'lb' ? 0.5 : 0.1 }]}
         onDone={async (v) => {

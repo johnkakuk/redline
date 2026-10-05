@@ -10,6 +10,7 @@ import { Button, EmptyState, ListRow, Segmented } from '../../ui/primitives';
 import { Screen } from '../../ui/Screen';
 import { SortableList } from '../../ui/Sortable';
 import { ExerciseFilters, useExerciseFilters } from '../exercises/ExercisePicker';
+import { StarterProgramSheet } from '../onboarding/equipment';
 
 export function RoutinesScreen() {
   const [params, setParams] = useSearchParams();
@@ -31,12 +32,18 @@ function RoutineList() {
   const nav = useNavigate();
   const all = useQuery({ queryKey: ['routines', 'all'], queryFn: () => db.listRoutines(true) }).data;
   const [showArchived, setShowArchived] = useState(false);
+  const [starter, setStarter] = useState(false);
   if (!all) return null;
   const active = all.filter((r) => !r.archived);
   const archived = all.filter((r) => r.archived);
   return (
     <>
-      {active.length === 0 && <EmptyState text="No routines yet." action={<Button onClick={() => nav('/routines/new')}><Plus size={18} />Create routine</Button>} />}
+      {active.length === 0 && <EmptyState text="No routines yet." action={
+        <div className="stack-sm">
+          <Button block onClick={() => setStarter(true)}>Use a starter program</Button>
+          <Button block variant="secondary" onClick={() => nav('/routines/new')}><Plus size={18} />Create routine</Button>
+        </div>} />}
+      <StarterProgramSheet open={starter} onClose={() => setStarter(false)} />
       <SortableList items={active} onReorder={(ids) => void act(db.reorderRoutines(ids))}
         render={(r, handle) => (
           <div className="card flush row" style={{ paddingRight: 4 }}>

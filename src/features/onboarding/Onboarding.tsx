@@ -2,42 +2,52 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { act, useSettings, useUnits } from '../../app/queries';
 import { db } from '../../db/client';
-import type { Equipment, Sex } from '../../shared/types';
+import type { ProgramKind } from '../../db/repos/programs.repo';
+import type { Sex } from '../../shared/types';
 import { KeypadSheet } from '../../ui/Keypad';
 import { Button, Field, Segmented, ValueButton } from '../../ui/primitives';
+import { EquipmentEditor, ProgramPreview, type EquipmentValue } from './equipment';
 
-const CAP_EQUIPMENT: { key: Equipment; label: string; hint: string }[] = [
-  { key: 'dumbbell', label: 'Heaviest dumbbell', hint: 'Per hand' },
-  { key: 'kettlebell', label: 'Heaviest kettlebell', hint: '' },
-  { key: 'band', label: 'Strongest band', hint: 'Rated load, if you track it' },
-];
+const STEPS = 4;
 
 export function Onboarding() {
   const nav = useNavigate();
   const s = useSettings().data;
-  const { units, toDisplay, toKg } = useUnits();
+  const { units } = useUnits();
   const [step, setStep] = useState(0);
   const [sex, setSex] = useState<Sex | 'none'>('none');
   const [birth, setBirth] = useState('');
   const [height, setHeight] = useState<number | null>(null); // display units: in or cm
-  const [caps, setCaps] = useState<Partial<Record<Equipment, number>>>({});
-  const [kp, setKp] = useState<null | 'height' | Equipment>(null);
+  const [equipment, setEquipment] = useState<EquipmentValue>({ owned: [], caps: {} });
+  const [program, setProgram] = useState<ProgramKind | 'none'>('equipment');
+  const [kp, setKp] = useState(false);
+  const onlyBw = equipment.owned.length === 0;
 
-  const finish = async (withCaps: boolean) => {
+  const saveEquipment = async () => {
+    await act(db.setEquipment(equipment.owned, equipment.caps));
+  };
+
+  const finish = async () => {
     await act(db.updateSettings({
       sex: sex === 'none' ? null : sex,
       birth_date: birth || null,
       height_cm: height == null ? null : units === 'lb' ? height * 2.54 : height,
-      onboarded: true,
     }));
-    if (withCaps && Object.keys(caps).length) await act(db.applyEquipmentCaps(caps));
+    if (program !== 'none') await act(db.createStarterProgram(onlyBw ? 'bodyweight' : program));
+    await act(db.updateSettings({ onboarded: true }));
     nav('/', { replace: true });
+  };
+
+  const next = async () => {
+    if (step === 2) await saveEquipment();
+    if (step < STEPS - 1) setStep(step + 1);
+    else await finish();
   };
 
   return (
     <div className="app">
       <div className="onb">
-        <div className="onb-steps">{[0, 1, 2].map((i) => <i key={i} className={i <= step ? 'on' : ''} />)}</div>
+        <div className="onb-steps">{Array.from({ length: STEPS }, (_, i) => <i key={i} className={i <= step ? 'on' : ''} />)}</div>
 
         {step === 0 && (
           <div className="grow">
@@ -62,7 +72,7 @@ export function Onboarding() {
             </Field>
             <Field label="Birth date"><input type="date" className="input" value={birth} onChange={(e) => setBirth(e.target.value)} /></Field>
             <Field label="Height" group>
-              <ValueButton label="Height" value={height} unit={units === 'lb' ? 'in' : 'cm'} placeholder="Not set" onClick={() => setKp('height')} />
+              <ValueButton label="Height" value={height} unit={units === 'lb' ? 'in' : 'cm'} placeholder="Not set" onClick={() => setKp(true)} />
             </Field>
           </div>
         )}
@@ -70,30 +80,39 @@ export function Onboarding() {
         {step === 2 && (
           <div className="grow">
             <h1 className="title">Your equipment</h1>
-            <p className="muted" style={{ margin: '8px 0 24px' }}>Suggestions never go above what you own. When you max out, Redline suggests a harder variation.</p>
-            {CAP_EQUIPMENT.map((c) => (
-              <Field key={c.key} label={c.label} hint={c.hint || undefined} group>
-                <ValueButton label={c.label} value={caps[c.key] != null ? toDisplay(caps[c.key]) : null} unit={units} placeholder="No limit" onClick={() => setKp(c.key)} />
-              </Field>
-            ))}
+            <p className="muted" style={{ margin: '8px 0 20px' }}>Workouts only use what you have. Set your heaviest weights and suggestions never go past them.</p>
+            <EquipmentEditor value={equipment} onChange={setEquipment} />
           </div>
         )}
 
-        <div className="stack-sm">
-          <Button block onClick={() => (step < 2 ? setStep(step + 1) : void finish(true))}>{step < 2 ? 'Continue' : 'Start training'}</Button>
-          {step > 0 && <Button variant="ghost" block onClick={() => (step < 2 ? setStep(step + 1) : void finish(false))}>Skip</Button>}
+        {step === 3 && (
+          <div className="grow">
+            <h1 className="title">Starter program</h1>
+            <p className="muted" style={{ margin: '8px 0 20px' }}>
+              {onlyBw ? 'No equipment needed. Every exercise has a harder version to move to as you get stronger.' : 'Three full-body days built from your equipment.'}
+            </p>
+            <Segmented value={onlyBw && program === 'equipment' ? 'bodyweight' : program} onChange={setProgram}
+              options={onlyBw
+                ? [{ value: 'bodyweight', label: 'Bodyweight' }, { value: 'none', label: 'Build my own' }]
+                : [{ value: 'equipment', label: 'My equipment' }, { value: 'bodyweight', label: 'Bodyweight' }, { value: 'none', label: 'Build my own' }]} />
+            <div style={{ marginTop: 16 }}>
+              {program === 'none'
+                ? <p className="caption">You can add a starter program later from Routines or Settings.</p>
+                : <ProgramPreview kind={onlyBw ? 'bodyweight' : program} />}
+            </div>
+          </div>
+        )}
+
+        <div className="stack-sm" style={{ marginTop: 24 }}>
+          <Button block onClick={() => void next()}>{step < STEPS - 1 ? 'Continue' : 'Start training'}</Button>
+          {step === 1 && <Button variant="ghost" block onClick={() => setStep(2)}>Skip</Button>}
+          {step > 0 && <Button variant="ghost" block onClick={() => setStep(step - 1)}>Back</Button>}
         </div>
       </div>
 
-      <KeypadSheet open={kp != null} title={kp === 'height' ? 'Height' : CAP_EQUIPMENT.find((c) => c.key === kp)?.label} nextLabel="Save" onClose={() => setKp(null)}
-        fields={[kp === 'height'
-          ? { key: 'v', label: units === 'lb' ? 'Inches (5′10″ = 70)' : 'Centimetres', unit: units === 'lb' ? 'in' : 'cm', value: height, step: 1 }
-          : { key: 'v', label: 'Weight', unit: units, decimals: true, value: kp && caps[kp as Equipment] != null ? toDisplay(caps[kp as Equipment]) : null, step: units === 'lb' ? 5 : 2 }]}
-        onDone={(v) => {
-          if (kp === 'height') setHeight(v.v);
-          else if (kp) setCaps((c) => { const n = { ...c }; if (v.v) n[kp] = toKg(v.v)!; else delete n[kp]; return n; });
-          setKp(null);
-        }} />
+      <KeypadSheet open={kp} title="Height" nextLabel="Save" onClose={() => setKp(false)}
+        fields={[{ key: 'v', label: units === 'lb' ? 'Inches (5′10″ = 70)' : 'Centimetres', unit: units === 'lb' ? 'in' : 'cm', value: height, step: 1 }]}
+        onDone={(v) => { setHeight(v.v); setKp(false); }} />
     </div>
   );
 }

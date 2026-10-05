@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { Download, FileText, RotateCcw, TriangleAlert, Upload } from 'lucide-react';
+import { Download, FileText, ListPlus, RotateCcw, TriangleAlert, Upload } from 'lucide-react';
 import { useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { act, queryClient, useSettings, useUnits } from '../../app/queries';
@@ -8,7 +8,9 @@ import { EQUIPMENT_LABEL } from '../../shared/labels';
 import { relativeDays } from '../../shared/time';
 import { EQUIPMENT, type Equipment, type Intensity } from '../../shared/types';
 import { KeypadSheet, type KeypadField } from '../../ui/Keypad';
+import { Term } from '../../ui/InfoTip';
 import { Badge, Button, ListRow, Segmented, Stepper } from '../../ui/primitives';
+import { EquipmentEditor, StarterProgramSheet } from '../onboarding/equipment';
 import { Screen } from '../../ui/Screen';
 import { Sheet } from '../../ui/Sheet';
 import { toast, toastError } from '../../ui/toast';
@@ -45,6 +47,7 @@ export function SettingsScreen() {
   const [kp, setKp] = useState<Kp>(null);
   const [importing, setImporting] = useState<null | { json: unknown; preview: Awaited<ReturnType<typeof db.previewImport>> }>(null);
   const [reset, setReset] = useState(false);
+  const [starter, setStarter] = useState(false);
   const [resetText, setResetText] = useState('');
   const fileRef = useRef<HTMLInputElement>(null);
   const boot = useQuery({ queryKey: ['boot'], queryFn: () => db.boot() }).data;
@@ -135,19 +138,31 @@ export function SettingsScreen() {
         <div className="section-label"><span className="micro">Training</span></div>
         <div className="list">
           <div className="list-row">
-            <div className="lr-main"><div className="lr-title">Default rest</div></div>
+            <div className="lr-main"><div className="lr-title"><Term k="default_rest">Default rest</Term></div></div>
             <div style={{ width: 160 }}><Stepper label="default rest" value={s.default_rest_sec} min={15} max={600} step={15}
               format={(v) => `${Math.floor(v / 60)}:${String(v % 60).padStart(2, '0')}`} onChange={(v) => void upd({ default_rest_sec: v })} /></div>
           </div>
           <div className="list-row">
-            <div className="lr-main"><div className="lr-title">Sessions per week</div><div className="lr-sub">Target for streaks</div></div>
+            <div className="lr-main"><div className="lr-title"><Term k="weekly_target">Sessions per week</Term></div><div className="lr-sub">Target for streaks</div></div>
             <div style={{ width: 160 }}><Stepper label="weekly target" value={s.weekly_target} min={1} max={14} onChange={(v) => void upd({ weekly_target: v })} /></div>
           </div>
           <div className="list-row" style={{ flexDirection: 'column', alignItems: 'stretch', gap: 8, paddingTop: 12, paddingBottom: 12 }}>
-            <div className="lr-title">Calorie intensity</div>
+            <div className="lr-title"><Term k="calorie_intensity">Calorie intensity</Term></div>
             <Segmented small value={s.calorie_intensity} onChange={(v: Intensity) => void upd({ calorie_intensity: v })}
               options={[{ value: 'light', label: 'Light' }, { value: 'moderate', label: 'Moderate' }, { value: 'vigorous', label: 'Vigorous' }]} />
           </div>
+        </div>
+      </div>
+
+      <div className="section">
+        <div className="section-label"><Term k="equipment" micro>Equipment</Term></div>
+        <EquipmentEditor value={{ owned: s.owned_equipment, caps: s.equipment_caps }}
+          onChange={(v) => {
+            const cleared = Object.fromEntries(Object.keys(s.equipment_caps).filter((e) => !(e in v.caps)).map((e) => [e, null]));
+            void act(db.setEquipment(v.owned, { ...cleared, ...v.caps }));
+          }} />
+        <div className="list" style={{ marginTop: 12 }}>
+          <ListRow title="Add a starter program" sub="Three full-body days that fit your equipment" leading={<ListPlus size={20} className="red" />} onClick={() => setStarter(true)} />
         </div>
       </div>
 
@@ -160,7 +175,7 @@ export function SettingsScreen() {
       </div>
 
       <div className="section">
-        <div className="section-label"><span className="micro">Default increments</span><span className="caption">Per exercise overrides win</span></div>
+        <div className="section-label"><Term k="increment" micro>Default increments</Term><span className="caption">Per exercise overrides win</span></div>
         <div className="list">
           {EQUIPMENT.filter((e) => e !== 'bodyweight').map((e) => (
             <ListRow key={e} title={EQUIPMENT_LABEL[e]} value={`${w(s.default_increment[e])} ${units}${e === 'dumbbell' ? '/hand' : ''}`} onClick={() => setKp({ inc: e })} />
@@ -185,7 +200,7 @@ export function SettingsScreen() {
         </div>
         <input ref={fileRef} type="file" accept="application/json,.json" hidden onChange={(e) => void pickFile(e.target.files?.[0])} />
         <div className="list" style={{ marginTop: 12 }}>
-          <ListRow title="Storage" value={
+          <ListRow title={<Term k="storage">Storage</Term>} value={
             boot?.vfs === 'memory' ? <Badge tone="warning">Not saving</Badge>
               : storage?.persisted ? <Badge tone="success">Persistent</Badge> : <Badge tone="warning">Best effort</Badge>} />
           {usageMb && <ListRow title="Used" value={`${usageMb} MB`} />}
@@ -198,6 +213,8 @@ export function SettingsScreen() {
         <div className="wordmark" style={{ fontSize: 28 }}>RED<span>LINE</span></div>
         <div style={{ marginTop: 4 }}>v{__APP_VERSION__} · schema {boot?.schemaVersion ?? '—'} · {boot?.vfs ?? '…'}</div>
       </div>
+
+      <StarterProgramSheet open={starter} onClose={() => setStarter(false)} />
 
       <KeypadSheet open={kp != null} title="Settings" nextLabel="Save" fields={kpFields()} onClose={() => setKp(null)} onDone={(v) => void onKp(v.v)} />
 

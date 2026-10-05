@@ -9,6 +9,7 @@ import { fmtDay, fmtMinutes } from '../../shared/time';
 import type { ProgressionChange } from '../../shared/types';
 import { fmtCompact } from '../../shared/units';
 import { Badge, Button, Card, PrBadge } from '../../ui/primitives';
+import { Term } from '../../ui/InfoTip';
 import { PushScreen } from '../../ui/Screen';
 import { ConfirmSheet } from '../../ui/Sheet';
 import { toast } from '../../ui/toast';
@@ -45,8 +46,8 @@ export function SummaryScreen({ history }: { history?: boolean }) {
       <h1 className="title" style={{ marginBottom: 16 }}>{s.workout.name}</h1>
       <div className="stats">
         <div className="stat"><span className="micro">Time</span><span className="num">{fmtMinutes(s.workout.active_duration_sec ?? 0)}</span></div>
-        <div className="stat"><span className="micro">Tonnage</span><span className="num">{fmtCompact(Number(w(s.tonnage_kg)))}</span></div>
-        <div className="stat"><span className="micro">Est. kcal</span><span className="num">{s.workout.kcal_estimate != null ? Math.round(s.workout.kcal_estimate) : '—'}</span></div>
+        <div className="stat"><Term k="tonnage" micro>Tonnage</Term><span className="num">{fmtCompact(Number(w(s.tonnage_kg)))}</span></div>
+        <div className="stat"><Term k="kcal" micro>Est. kcal</Term><span className="num">{s.workout.kcal_estimate != null ? Math.round(s.workout.kcal_estimate) : '—'}</span></div>
       </div>
       <div className="caption" style={{ marginTop: 8 }}>
         {s.working_sets} working sets · tonnage in {units}

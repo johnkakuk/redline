@@ -1,8 +1,12 @@
 import type { Db } from './sqlite';
 import m001 from './migrations/001_init.sql?raw';
+import m002 from './migrations/002_equipment.sql?raw';
 
 /** Ordered migrations. Append only; never edit a shipped migration. */
-export const MIGRATIONS: { version: number; sql: string }[] = [{ version: 1, sql: m001 }];
+export const MIGRATIONS: { version: number; sql: string }[] = [
+  { version: 1, sql: m001 },
+  { version: 2, sql: m002 },
+];
 
 /** Tables that carry updated_at and get an auto-touch trigger. */
 export const SYNC_TABLES = [

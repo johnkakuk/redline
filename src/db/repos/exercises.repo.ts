@@ -8,6 +8,11 @@ export interface ExerciseFilter {
   search?: string;
   muscle?: Muscle | null;
   equipment?: Equipment | null;
+  /** Only exercises using one of these equipment types. */
+  equipmentIn?: Equipment[] | null;
+  /** Exercises working any of these muscles (primary or secondary). */
+  musclesIn?: Muscle[] | null;
+  sort?: 'az' | 'za';
   includeArchived?: boolean;
 }
 
@@ -16,9 +21,18 @@ export function listExercises(db: Db, f: ExerciseFilter = {}): Exercise[] {
   const params: Bind = [];
   if (!f.includeArchived) where.push('archived = 0');
   if (f.equipment) { where.push('equipment = ?'); params.push(f.equipment); }
+  if (f.equipmentIn) {
+    where.push(`equipment IN (${f.equipmentIn.map(() => '?').join(', ') || "''"})`);
+    params.push(...f.equipmentIn);
+  }
   if (f.muscle) {
     where.push(`(primary_muscle = ? OR EXISTS (SELECT 1 FROM json_each(secondary_muscles) WHERE value = ?))`);
     params.push(f.muscle, f.muscle);
+  }
+  if (f.musclesIn?.length) {
+    const qs = f.musclesIn.map(() => '?').join(', ');
+    where.push(`(primary_muscle IN (${qs}) OR EXISTS (SELECT 1 FROM json_each(secondary_muscles) WHERE value IN (${qs})))`);
+    params.push(...f.musclesIn, ...f.musclesIn);
   }
   if (f.search?.trim()) {
     for (const term of f.search.trim().toLowerCase().split(/\s+/)) {
@@ -26,7 +40,7 @@ export function listExercises(db: Db, f: ExerciseFilter = {}): Exercise[] {
       params.push(`%${term}%`);
     }
   }
-  return db.all(`SELECT * FROM exercises WHERE ${where.join(' AND ')} ORDER BY name COLLATE NOCASE`, params).map(toExercise);
+  return db.all(`SELECT * FROM exercises WHERE ${where.join(' AND ')} ORDER BY name COLLATE NOCASE ${f.sort === 'za' ? 'DESC' : 'ASC'}`, params).map(toExercise);
 }
 
 export function getExercise(db: Db, id: string): Exercise {

@@ -9,6 +9,7 @@ import { MUSCLE_LABEL } from '../../shared/labels';
 import { addDays, fmtDay, fmtMinutes, localDate, parseLocalDate, startOfWeek } from '../../shared/time';
 import { fmtCompact } from '../../shared/units';
 import { BarChart, CalendarHeatmap, HBars } from '../../ui/charts';
+import { Term } from '../../ui/InfoTip';
 import { Card, Chip, EmptyState, ListRow, Segmented } from '../../ui/primitives';
 import { Screen } from '../../ui/Screen';
 import { StrengthPanel } from './StrengthPanel';
@@ -92,7 +93,7 @@ function Volume() {
         <div className="row-between" style={{ marginBottom: 12 }}>
           <button type="button" className="icon-btn" aria-label="Previous week" onClick={() => shift(-1)}><ChevronLeft size={20} /></button>
           <div className="center">
-            <div className="micro">Sets per muscle</div>
+            <Term k="volume" micro>Sets per muscle</Term>
             <div className="callout">{week === thisWeek ? 'This week' : `Week of ${fmtDay(week)}`}</div>
           </div>
           <button type="button" className="icon-btn" aria-label="Next week" disabled={week >= thisWeek} onClick={() => shift(1)} style={week >= thisWeek ? { opacity: 0.3 } : undefined}><ChevronRight size={20} /></button>
@@ -102,7 +103,7 @@ function Volume() {
         <div className="caption" style={{ marginTop: 12 }}>Shaded band: {VOLUME_BAND.min}–{VOLUME_BAND.max} sets. Secondary muscles count half.</div>
       </Card>
 
-      <Card className="section" label="Weekly tonnage" action={last && prev && prev.tonnage_kg > 0 && (
+      <Card className="section" label={<Term k="tonnage" micro>Weekly tonnage</Term>} action={last && prev && prev.tonnage_kg > 0 && (
         <span className={`delta ${last.tonnage_kg >= prev.tonnage_kg ? 'up' : 'down'}`}>{last.tonnage_kg >= prev.tonnage_kg ? '↑' : '↓'} {Math.abs(Math.round((last.tonnage_kg / prev.tonnage_kg - 1) * 100))}% vs last week</span>
       )}>
         <div className="num" style={{ fontSize: 34, marginBottom: 8 }}>{fmtCompact(toDisplay(last?.tonnage_kg ?? 0) ?? 0)}<span className="unit">{units}</span></div>
@@ -136,7 +137,7 @@ function Consistency() {
   return (
     <>
       <div className="stats">
-        <div className="stat"><span className="micro">Streak</span><span className="num">{c.current_streak}<span className="of"> wk</span></span></div>
+        <div className="stat"><Term k="streak" micro>Streak</Term><span className="num">{c.current_streak}<span className="of"> wk</span></span></div>
         <div className="stat"><span className="micro">Best</span><span className="num">{c.best_streak}<span className="of"> wk</span></span></div>
         <div className="stat"><span className="micro">Avg time</span><span className="num">{c.avg_duration_sec ? fmtMinutes(c.avg_duration_sec) : '—'}</span></div>
       </div>

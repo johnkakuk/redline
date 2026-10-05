@@ -6,6 +6,7 @@ import { act, useSettings, useUnits } from '../../app/queries';
 import { db } from '../../db/client';
 import { EQUIPMENT_LABEL, LOAD_TYPE_LABEL, MUSCLE_LABEL } from '../../shared/labels';
 import { EQUIPMENT, LOAD_TYPES, MUSCLES, type ExerciseInput } from '../../shared/types';
+import { Term } from '../../ui/InfoTip';
 import { KeypadSheet } from '../../ui/Keypad';
 import { Chip, Field, Stepper, ValueButton } from '../../ui/primitives';
 import { PushScreen } from '../../ui/Screen';
@@ -68,7 +69,7 @@ export function ExerciseFormScreen() {
             {EQUIPMENT.map((x) => <option key={x} value={x}>{EQUIPMENT_LABEL[x]}</option>)}
           </select>
         </Field>
-        <Field label="Load type">
+        <Field label="Load type" hint={<Term k="load_type">What’s this?</Term>}>
           <select className="select" value={f.load_type} onChange={(e) => set('load_type', e.target.value as ExerciseInput['load_type'])}>
             {LOAD_TYPES.map((x) => <option key={x} value={x}>{LOAD_TYPE_LABEL[x]}</option>)}
           </select>
@@ -91,11 +92,11 @@ export function ExerciseFormScreen() {
       </div>
       {!bw && (
         <div className="form-grid" style={{ marginTop: 12 }}>
-          <Field label="Increment" hint={f.load_type === 'per_hand' ? 'Per dumbbell' : undefined} group>
+          <Field label="Increment" hint={<Term k="increment">{f.load_type === 'per_hand' ? 'Per dumbbell' : 'Step size'}</Term>} group>
             <ValueButton label="Increment" value={f.default_increment_kg != null ? w(f.default_increment_kg) : null} unit={units}
               placeholder={`${w(defInc)} ${units} default`} onClick={() => setKp('inc')} />
           </Field>
-          <Field label="Max load (cap)" hint="Your heaviest available" group>
+          <Field label="Max load (cap)" hint={<Term k="cap">Your heaviest available</Term>} group>
             <ValueButton label="Max load" value={f.max_load_kg != null ? w(f.max_load_kg) : null} unit={units} placeholder="No cap" onClick={() => setKp('cap')} />
           </Field>
         </div>

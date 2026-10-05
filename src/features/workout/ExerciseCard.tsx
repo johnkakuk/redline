@@ -4,6 +4,7 @@ import { useUnits } from '../../app/queries';
 import { gt } from '../../engine/rounding';
 import type { WorkoutExerciseFull, WorkoutSet } from '../../shared/types';
 import { Badge, Button, CheckIcon, PrBadge, StatusBadge } from '../../ui/primitives';
+import { Term } from '../../ui/InfoTip';
 import { ActionSheet } from '../../ui/Sheet';
 
 export interface CardHandlers {
@@ -117,5 +118,5 @@ export function ExerciseCard({ we, label, currentSetId, prSets, h }: {
 }
 
 export const SupersetLabel = ({ letter }: { letter: string }) => (
-  <div className="ss-label"><Badge tone="red">Superset {letter}</Badge><span className="caption">Rest after the last exercise</span></div>
+  <div className="ss-label"><Badge tone="red">Superset {letter}</Badge><span className="caption"><Term k="superset">Rest after the last exercise</Term></span></div>
 );

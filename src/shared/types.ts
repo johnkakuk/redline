@@ -35,6 +35,10 @@ export interface Settings {
   default_increment: Record<Equipment, number>;
   onboarded: boolean;
   last_export_at: string | null;
+  /** Equipment the user has. Bodyweight is always implied. */
+  owned_equipment: Equipment[];
+  /** Heaviest available load per equipment type (kg). */
+  equipment_caps: Partial<Record<Equipment, number>>;
 }
 
 export interface Exercise {

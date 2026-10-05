@@ -6,6 +6,7 @@ import { PR_LABEL } from '../../engine/prs';
 import { addDays, fmtDay } from '../../shared/time';
 import { fmtCompact } from '../../shared/units';
 import { LineChart } from '../../ui/charts';
+import { Term } from '../../ui/InfoTip';
 import { Card, Segmented } from '../../ui/primitives';
 
 export type Range = '1M' | '3M' | '6M' | '1Y' | 'All';
@@ -34,7 +35,7 @@ export function StrengthPanel({ exerciseId }: { exerciseId: string }) {
       <Card>
         <div className="chart-tip">
           <div>
-            <div className="micro">{reps ? 'Best reps' : 'Est. 1RM'}</div>
+            {reps ? <div className="micro">Best reps</div> : <Term k="e1rm" micro>Est. 1RM</Term>}
             <div className="num" style={{ fontSize: 34, marginTop: 4 }}>
               {shown ? (reps ? shown.value : w(shown.value)) : '—'}<span className="unit">{reps ? 'reps' : units}</span>
             </div>

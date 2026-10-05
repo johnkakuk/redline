@@ -35,7 +35,7 @@ beforeEach(() => {
 
 describe('boot', () => {
   it('migrates, seeds ~100 exercises with linked variation chains', () => {
-    expect(api.boot().schemaVersion).toBe(1);
+    expect(api.boot().schemaVersion).toBe(2);
     expect(api.listExercises().length).toBeGreaterThan(80);
     const push = ex('Push-up');
     expect(push.harder_variation_id).toBe(ex('Decline Push-up').id);
@@ -280,6 +280,65 @@ describe('workout loop', () => {
     const sum = api.finishWorkout(wid);
     expect(sum.changes[0].kind).toBe('pinned');
     expect(asLb(api.getRoutine(routineId).items[0].state!.target_weight_kg)).toBe(40);
+  });
+});
+
+describe('equipment + starter programs', () => {
+  const equipmentOf = (ids: string[]) => ids.flatMap((id) => api.getRoutine(id).items.map((i) => i.exercise.equipment));
+
+  it('defaults to owning everything; caps can be set and cleared', () => {
+    expect(api.getSettings().owned_equipment).toContain('barbell');
+    api.setEquipment(['dumbbell'], { dumbbell: lb(50), kettlebell: null });
+    expect(api.getSettings().owned_equipment).toEqual(['dumbbell']);
+    expect(asLb(api.getSettings().equipment_caps.dumbbell)).toBe(50);
+    expect(asLb(ex('DB Curl').max_load_kg)).toBe(50);
+    api.setEquipment(['dumbbell'], { dumbbell: null });
+    expect(ex('DB Curl').max_load_kg).toBeNull();
+  });
+
+  it('no equipment → bodyweight-only program', () => {
+    api.setEquipment([], {});
+    const ids = api.createStarterProgram('equipment');
+    expect(api.listRoutines().map((r) => r.name)).toEqual(['Bodyweight A', 'Bodyweight B', 'Bodyweight C']);
+    expect(new Set(equipmentOf(ids))).toEqual(new Set(['bodyweight']));
+    const a = api.getRoutine(ids[0]).items;
+    expect(a.map((i) => i.exercise.name)).toContain('Push-up');
+    expect(a.find((i) => i.exercise.name === 'Plank')).toMatchObject({ rep_min: 20, rep_max: 45 });
+  });
+
+  it('dumbbells only → dumbbell + bodyweight exercises', () => {
+    api.setEquipment(['dumbbell'], {});
+    const ids = api.createStarterProgram('equipment');
+    const eq = new Set(equipmentOf(ids));
+    expect([...eq].every((e) => e === 'dumbbell' || e === 'bodyweight')).toBe(true);
+    expect(api.getRoutine(ids[0]).items[0].exercise.name).toBe('Goblet Squat');
+    const b = api.getRoutine(ids[1]).items;
+    expect(b.filter((i) => i.group_id).map((i) => i.exercise.name)).toEqual(['DB Curl', 'Overhead DB Triceps Extension']);
+  });
+
+  it('full gym → barbell compounds with warm-ups', () => {
+    const ids = api.createStarterProgram('equipment');
+    const first = api.getRoutine(ids[0]).items[0];
+    expect(first.exercise.name).toBe('Barbell Back Squat');
+    expect(first.warmup_sets).toBe(2);
+    expect(api.listRoutines()[0].name).toBe('Full Body A');
+  });
+
+  it('bodyweight program ignores owned equipment', () => {
+    const ids = api.createStarterProgram('bodyweight');
+    expect(new Set(equipmentOf(ids))).toEqual(new Set(['bodyweight']));
+  });
+
+  it('library filters by several muscles and sorts', () => {
+    const list = api.listExercises({ musclesIn: ['calves', 'forearms'], equipmentIn: ['dumbbell'] });
+    expect(list.map((e) => e.name)).toEqual(['DB Calf Raise', 'DB Curl', 'DB Farmer Carry', 'DB Shrug', 'Hammer Curl']);
+    expect(api.listExercises({ musclesIn: ['calves', 'forearms'], equipmentIn: ['dumbbell'], sort: 'za' })[0].name).toBe('Hammer Curl');
+  });
+
+  it('library filter by owned equipment', () => {
+    const list = api.listExercises({ equipmentIn: ['bodyweight'] });
+    expect(list.length).toBeGreaterThan(15);
+    expect(list.every((e) => e.equipment === 'bodyweight')).toBe(true);
   });
 });
 

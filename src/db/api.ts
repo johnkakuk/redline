@@ -4,12 +4,13 @@ import * as analytics from './repos/analytics.repo';
 import * as body from './repos/body.repo';
 import * as data from './repos/data.repo';
 import * as exercises from './repos/exercises.repo';
+import * as programs from './repos/programs.repo';
 import * as routines from './repos/routines.repo';
 import * as settings from './repos/settings.repo';
 import * as workouts from './repos/workouts.repo';
 import type { Db } from './sqlite';
 
-const modules = { analytics, body, data, exercises, routines, settings, workouts };
+const modules = { analytics, body, data, exercises, programs, routines, settings, workouts };
 
 type Bound<M> = {
   [K in keyof M as M[K] extends (db: Db, ...a: never[]) => unknown ? K : never]: M[K] extends (db: Db, ...a: infer A) => infer R
@@ -28,7 +29,7 @@ export interface BootInfo {
 }
 
 /** Functions that take a Db as their first argument (anything else exported from a repo is skipped). */
-const BOUND_SKIP = new Set(['DEFAULT_INCREMENTS']);
+const BOUND_SKIP = new Set(['DEFAULT_INCREMENTS', 'availableEquipment', 'profileOf', 'parseImport']);
 
 export function createApi(db: Db, info: Omit<BootInfo, 'schemaVersion' | 'seeded'>): DbApi {
   const schemaVersion = migrate(db);

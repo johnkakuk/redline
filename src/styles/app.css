@@ -150,7 +150,8 @@ svg { flex: none; }
 .segmented.small button { font-size: var(--fs-caption); }
 
 /* Chips */
-.chips { display: flex; gap: var(--s-2); overflow-x: auto; scrollbar-width: none; margin: 0 calc(-1 * var(--gutter)); padding: 0 var(--gutter); }
+/* Horizontal margins only, so stack spacing above still applies. */
+.chips { display: flex; gap: var(--s-2); overflow-x: auto; scrollbar-width: none; margin-left: calc(-1 * var(--gutter)); margin-right: calc(-1 * var(--gutter)); padding: 0 var(--gutter); }
 .chips::-webkit-scrollbar { display: none; }
 .chip { flex: none; height: 32px; padding: 0 var(--s-3); border-radius: var(--r-pill); background: var(--bg-2); color: var(--text-2); font-size: var(--fs-caption); font-weight: var(--fw-medium); display: inline-flex; align-items: center; gap: 4px; }
 .chip.on { background: var(--red-tint); color: var(--red-400); }
@@ -431,4 +432,36 @@ button.list-row:active, a.list-row:active { background: var(--bg-2); }
 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation: none !important; transition: none !important; }
+}
+
+/* Info tips */
+.term { display: inline-flex; align-items: center; gap: 2px; }
+.info-btn {
+  display: inline-flex; align-items: center; justify-content: center; vertical-align: middle;
+  width: 28px; height: 28px; margin: -6px -4px -6px 0; border-radius: 50%; color: var(--text-3); flex: none;
+}
+.info-btn:hover, .info-btn[aria-expanded="true"] { color: var(--info); }
+.info-pop {
+  position: fixed; z-index: 95; width: min(300px, calc(100vw - 32px));
+  background: var(--bg-3); border: 1px solid var(--border-2); border-radius: var(--r-md); box-shadow: var(--shadow-sheet);
+  padding: var(--s-3) var(--s-4); font-size: var(--fs-caption); line-height: 1.45; color: var(--text-2);
+  text-transform: none; letter-spacing: 0; font-weight: var(--fw-regular);
+  animation: fade-in var(--dur-base) var(--ease-out);
+}
+.info-title { color: var(--text-1); font-weight: var(--fw-semibold); font-size: var(--fs-callout); margin-bottom: 4px; }
+
+/* Library toolbar + filter sheet */
+.lib-toolbar { display: flex; align-items: center; gap: var(--s-2); }
+.lib-toolbar .segmented { width: 132px; flex: none; }
+.lib-count { margin-left: auto; }
+.filter-btn { position: relative; }
+.filter-btn .count { min-width: 20px; height: 20px; padding: 0 6px; border-radius: var(--r-pill); background: var(--red-500); color: var(--text-on-red); font-size: var(--fs-micro); display: inline-flex; align-items: center; justify-content: center; }
+.checkbox { width: 24px; height: 24px; border-radius: 7px; border: 1.5px solid var(--border-2); display: flex; align-items: center; justify-content: center; flex: none; color: transparent; }
+.checkbox.on { background: var(--red-500); border-color: var(--red-500); color: #fff; }
+.filter-actions { display: flex; gap: var(--s-1); }
+
+/* In page flow (pushes content down) so it never covers controls. */
+.storage-banner {
+  max-width: calc(560px - 2 * var(--gutter)); margin: calc(var(--safe-top) + var(--s-2)) auto calc(-1 * var(--safe-top));
+  width: calc(100% - 2 * var(--gutter)); background: #2A2110;
 }

@@ -155,8 +155,9 @@ function LiveWorkout({ w }: { w: WorkoutFull }) {
     try {
       await db.finishWorkout(w.id);
       useRest.getState().skip();
-      await queryClient.invalidateQueries();
+      // Leave first: once queries refresh there is no active workout and this screen would redirect home.
       nav(`/workout/${w.id}/summary`, { replace: true });
+      void queryClient.invalidateQueries();
     } catch (e) {
       if (e instanceof Error && /No sets/.test(e.message)) setConfirm('empty');
       else toastError(e);

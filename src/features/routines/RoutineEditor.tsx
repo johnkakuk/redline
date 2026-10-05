@@ -7,6 +7,7 @@ import { act, useSettings, useUnits } from '../../app/queries';
 import { db } from '../../db/client';
 import type { RoutineItemInput } from '../../db/repos/routines.repo';
 import type { Exercise, ProgressionState, RoutineItem } from '../../shared/types';
+import { Term } from '../../ui/InfoTip';
 import { KeypadSheet } from '../../ui/Keypad';
 import { Badge, Button, EmptyState, Field, Segmented, StatusBadge, Stepper, ValueButton } from '../../ui/primitives';
 import { PushScreen } from '../../ui/Screen';
@@ -128,6 +129,7 @@ export function RoutineEditor() {
             <Button variant="ghost" size="sm" onClick={() => { setSelecting((v) => !v); setSelected([]); setOpen(null); }}>{selecting ? 'Cancel' : 'Select'}</Button>
           )}
         </div>
+        {selecting && <p className="caption" style={{ marginBottom: 8 }}><Term k="superset">Select 2+ exercises to pair as a superset</Term></p>}
         {selecting && (
           <div className="btn-row" style={{ marginBottom: 12 }}>
             <Button size="sm" disabled={selected.length < 2} onClick={group}><Layers size={16} />Group as superset</Button>
@@ -197,20 +199,20 @@ function ItemCard({ it, handle, label, open, selecting, selected, onToggleOpen, 
         <div className="item-body">
           <div className="cfg-grid">
             <div><span className="micro">Working sets</span><Stepper label="sets" value={ws} min={1} max={10} onChange={(v) => onPatch({ working_sets: v })} /></div>
-            <div><span className="micro">Warm-up sets</span><Stepper label="warm-ups" value={it.warmup_sets ?? 0} min={0} max={3} onChange={(v) => onPatch({ warmup_sets: v })} /></div>
-            <div><span className="micro">Rep min</span><Stepper label="rep min" value={rmin} min={1} max={50} onChange={(v) => onPatch({ rep_min: v, rep_max: Math.max(v, rmax) })} /></div>
-            <div><span className="micro">Rep max</span><Stepper label="rep max" value={rmax} min={rmin} max={60} onChange={(v) => onPatch({ rep_max: v })} /></div>
-            <div><span className="micro">Rest</span><Stepper label="rest" value={rest} min={0} max={600} step={15} format={fmtRest} onChange={(v) => onPatch({ rest_sec: v })} /></div>
+            <div><Term k="warmups" micro>Warm-up sets</Term><Stepper label="warm-ups" value={it.warmup_sets ?? 0} min={0} max={3} onChange={(v) => onPatch({ warmup_sets: v })} /></div>
+            <div><Term k="rep_range" micro>Rep min</Term><Stepper label="rep min" value={rmin} min={1} max={50} onChange={(v) => onPatch({ rep_min: v, rep_max: Math.max(v, rmax) })} /></div>
+            <div><Term k="rep_range" micro>Rep max</Term><Stepper label="rep max" value={rmax} min={rmin} max={60} onChange={(v) => onPatch({ rep_max: v })} /></div>
+            <div><Term k="default_rest" micro>Rest</Term><Stepper label="rest" value={rest} min={0} max={600} step={15} format={fmtRest} onChange={(v) => onPatch({ rest_sec: v })} /></div>
             <div>
-              <span className="micro">Progression</span>
+              <Term k="progression" micro>Progression</Term>
               <Segmented small value={it.progression_mode ?? 'double'} options={[{ value: 'double', label: 'Double' }, { value: 'none', label: 'Off' }]} onChange={(v) => onPatch({ progression_mode: v })} />
             </div>
             {ex.load_type !== 'bodyweight' && (
               <>
-                <div><span className="micro">Increment</span>
+                <div><Term k="increment" micro>Increment</Term>
                   <ValueButton label="Increment" value={it.increment_kg != null ? w(it.increment_kg) : null} unit={units} placeholder={`${w(defInc)} default`} onClick={() => setKp('inc')} />
                 </div>
-                <div><span className="micro">Cap override</span>
+                <div><Term k="cap" micro>Cap override</Term>
                   <ValueButton label="Cap" value={it.max_load_kg != null ? w(it.max_load_kg) : null} unit={units} placeholder={ex.max_load_kg != null ? `${w(ex.max_load_kg)} default` : 'None'} onClick={() => setKp('cap')} />
                 </div>
               </>

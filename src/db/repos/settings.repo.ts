@@ -19,6 +19,10 @@ function toSettings(r: Row): Settings {
   let inc: Partial<Record<Equipment, number>> = {};
   try { inc = JSON.parse(r.default_increment_json as string); } catch { /* defaults below */ }
   const units = r.units as Units;
+  let owned: Equipment[] = [];
+  let caps: Partial<Record<Equipment, number>> = {};
+  try { owned = JSON.parse(r.equipment_json as string); } catch { /* none */ }
+  try { caps = JSON.parse(r.equipment_caps_json as string); } catch { /* none */ }
   return {
     units,
     sex: (r.sex as Sex | null) ?? null,
@@ -32,6 +36,8 @@ function toSettings(r: Row): Settings {
     default_increment: { ...DEFAULT_INCREMENTS[units], ...inc },
     onboarded: r.onboarded === 1,
     last_export_at: (r.last_export_at as string | null) ?? null,
+    owned_equipment: owned.filter((e) => e !== 'bodyweight'),
+    equipment_caps: caps,
   };
 }
 
@@ -47,10 +53,34 @@ export function updateSettings(db: Db, patch: Partial<Settings>): Settings {
   for (const [k, v] of Object.entries(patch) as [keyof Settings, unknown][]) {
     if (k === 'default_increment') set('default_increment_json', JSON.stringify(v));
     else if (k === 'onboarded') set('onboarded', v ? 1 : 0);
+    else if (k === 'owned_equipment') set('equipment_json', JSON.stringify(v));
+    else if (k === 'equipment_caps') set('equipment_caps_json', JSON.stringify(v));
     else set(k, v as string | number | null);
   }
   if (cols.length) db.run(`UPDATE settings SET ${cols.join(', ')} WHERE id = 'me'`, vals);
   return getSettings(db);
+}
+
+/** Equipment usable right now: what the user owns plus bodyweight. */
+export function availableEquipment(s: Settings): Equipment[] {
+  return [...new Set<Equipment>([...s.owned_equipment, 'bodyweight'])];
+}
+
+/** Save owned equipment and caps, and apply the caps to every exercise of that type. */
+export function setEquipment(db: Db, owned: Equipment[], caps: Partial<Record<Equipment, number | null>>): Settings {
+  return db.tx(() => {
+    const s = getSettings(db);
+    const nextCaps = { ...s.equipment_caps };
+    for (const [eq, kg] of Object.entries(caps) as [Equipment, number | null | undefined][]) {
+      if (kg === undefined) continue;
+      if (kg == null) delete nextCaps[eq]; else nextCaps[eq] = kg;
+      db.run(
+        `UPDATE exercises SET max_load_kg = ? WHERE equipment = ? AND load_type != 'bodyweight' AND deleted_at IS NULL`,
+        [kg, eq],
+      );
+    }
+    return updateSettings(db, { owned_equipment: owned.filter((e) => e !== 'bodyweight'), equipment_caps: nextCaps });
+  });
 }
 
 /**

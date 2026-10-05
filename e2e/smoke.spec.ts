@@ -10,17 +10,20 @@ async function keys(page: Page, digits: string) {
 }
 const sheet = (page: Page) => page.locator('.sheet');
 
-async function onboard(page: Page, dumbbellCapLb?: number) {
+async function onboard(page: Page, dumbbellCapLb?: number, program: 'Build my own' | 'Bodyweight' = 'Build my own') {
   await page.goto('/');
   await expect(page).toHaveURL(/onboarding/);
   await page.getByRole('button', { name: 'lb', exact: true }).click();
   await page.getByRole('button', { name: 'Continue' }).click();
   await page.getByRole('button', { name: 'Skip' }).click();
   if (dumbbellCapLb) {
-    await page.getByRole('button', { name: 'Heaviest dumbbell' }).click();
+    await page.getByRole('group', { name: 'Dumbbells' }).getByRole('tab', { name: 'Have' }).click();
+    await page.getByRole('button', { name: 'Heaviest dumbbell (per hand)' }).click();
     await keys(page, String(dumbbellCapLb));
     await sheet(page).getByRole('button', { name: 'Done' }).click();
   }
+  await page.getByRole('button', { name: 'Continue' }).click();
+  await page.getByRole('tab', { name: program }).click();
   await page.getByRole('button', { name: 'Start training' }).click();
   await expect(page.getByRole('heading', { name: 'Today' })).toBeVisible();
 }
@@ -96,6 +99,22 @@ test('core loop: routine → workout → finish → next session progresses and 
   await page.getByRole('button', { name: /^Push A/ }).click();
   await expect(page.locator('.item-card').getByText('Single-Arm DB Bench Press')).toBeVisible();
   expect(errors).toEqual([]);
+});
+
+test('no equipment → bodyweight-only starter program', async ({ page }) => {
+  await onboard(page, undefined, 'Bodyweight');
+  await expect(page.getByText('Bodyweight A')).toBeVisible();
+  await page.getByRole('button', { name: 'Start workout' }).click();
+  await expect(page.getByRole('heading', { name: 'Push-up' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Split Squat' })).toBeVisible();
+  // The picker only offers what you own.
+  await page.getByRole('button', { name: 'Add exercise' }).click();
+  await page.getByPlaceholder('Search exercises').fill('bench');
+  await expect(page.getByRole('button', { name: /^DB Bench Press/ })).toHaveCount(0);
+  await page.getByRole('button', { name: 'Filter exercises' }).click();
+  await page.getByRole('button', { name: 'All', exact: true }).click();
+  await page.locator('.sheet').last().getByRole('button', { name: 'Done' }).click();
+  await expect(page.getByRole('button', { name: /^DB Bench Press/ })).toBeVisible();
 });
 
 // Playwright's WebKit can't navigate through a service worker while offline, so this one runs in Chromium.
