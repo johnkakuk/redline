@@ -22,11 +22,18 @@ import { useElapsed } from './useElapsed';
 
 type Edit = { weId: string; setId: string; field: 'weight' | 'reps' };
 
+/**
+ * Where the workout screen is heading after Finish. Navigation and the data refresh race; if the refresh
+ * wins, this screen sees "no active workout" and must still land on the summary, not home.
+ */
+let leaving: { to: string; at: number } | null = null;
+const leavingTarget = () => (leaving && Date.now() - leaving.at < 10_000 ? leaving.to : '/');
+
 export function WorkoutScreen() {
   const id = useActiveWorkoutId();
   const activeLoaded = useQuery({ queryKey: ['active-id'], queryFn: () => db.getActiveWorkoutId() }).isFetched;
   const { data: w } = useQuery({ queryKey: ['workout', id], queryFn: () => db.getWorkout(id!), enabled: !!id });
-  if (activeLoaded && !id) return <Navigate to="/" replace />;
+  if (activeLoaded && !id) return <Navigate to={leavingTarget()} replace />;
   if (!w) return <div className="screen no-tabs" aria-busy="true" />;
   return <LiveWorkout w={w} />;
 }
@@ -197,8 +204,8 @@ function LiveWorkout({ w }: { w: WorkoutFull }) {
       await db.finishWorkout(w.id);
       useRest.getState().skip();
       session.forget(w.id);
-      // Leave first: once queries refresh there is no active workout and this screen would redirect home.
-      nav(`/workout/${w.id}/summary`, { replace: true });
+      leaving = { to: `/workout/${w.id}/summary`, at: Date.now() };
+      nav(leaving.to, { replace: true });
       void queryClient.invalidateQueries();
       notifyWrite();
     } catch (e) {
@@ -208,6 +215,7 @@ function LiveWorkout({ w }: { w: WorkoutFull }) {
   };
 
   const discard = async () => {
+    leaving = null;
     await act(db.discardWorkout(w.id));
     useRest.getState().skip();
     session.forget(w.id);
