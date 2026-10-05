@@ -90,7 +90,8 @@ export function weekStats(db: Db) {
     };
   };
   const trainedDates = db.all<{ started_at: string }>(
-    `SELECT started_at FROM workouts WHERE status = 'completed' AND deleted_at IS NULL AND started_at >= ?`, [thisWeek.toISOString()],
+    // This week and last week: the Today strip can swipe back one week.
+    `SELECT started_at FROM workouts WHERE status = 'completed' AND deleted_at IS NULL AND started_at >= ?`, [lastWeek.toISOString()],
   ).map((r) => localDate(r.started_at));
   return {
     current: sum(thisWeek, addDays(thisWeek, 7)),

@@ -142,12 +142,11 @@ export function ExercisePicker({ open, onClose, onPick, single, title = 'Add exe
     if (single) { onPick([id]); onClose(); return; }
     setSel((s) => (s.includes(id) ? s.filter((x) => x !== id) : [...s, id]));
   };
-  const created = (id: string, name: string) => {
+  const created = (id: string) => {
     setCreating(false);
     if (single) { onPick([id]); onClose(); return; }
     setSel((s) => [...s, id]);
-    f.setSearch(name); // show it, selected, even if filters would hide it
-    f.setEquipment([...EQUIPMENT]);
+    f.setSearch(''); // back to the full list to keep picking; the new one stays selected
   };
   return (
     <Sheet open={open} onClose={onClose} full title={title}

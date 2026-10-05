@@ -263,6 +263,11 @@ button.list-row:active, a.list-row:active { background: var(--bg-2); }
 
 /* ── Today ── */
 .week { display: flex; justify-content: space-between; margin-top: var(--s-2); }
+/* Swipeable strip: last week | this week, side by side. Vertical scrolling still belongs to the page. */
+.week-viewport { overflow: hidden; touch-action: pan-y; outline-offset: 4px; border-radius: var(--r-sm); }
+.week-track { display: flex; width: 200%; transition: transform var(--dur-base) var(--ease-out); }
+.week-track.dragging { transition: none; }
+.week-track > .week { width: 50%; flex: none; }
 /* Week strip: status, not buttons. Letter + dot; trained days (filled) open that day's workout. */
 .day { flex: 1; min-height: var(--tap-min); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; padding: 4px 0; border-radius: var(--r-sm); }
 .day span { font-size: var(--fs-micro); font-weight: var(--fw-semibold); letter-spacing: var(--tracking-micro); color: var(--text-3); padding-bottom: 2px; border-bottom: 2px solid transparent; }
@@ -300,9 +305,9 @@ button.day:active { background: var(--bg-2); }
 .ss-group > .ex-card + .ex-card { margin-top: var(--s-2); }
 .ss-label { display: flex; align-items: center; gap: var(--s-2); margin-bottom: var(--s-2); }
 
-.set-cols, .set-row { display: grid; grid-template-columns: 32px minmax(0, 1fr) 76px 56px 44px; gap: var(--s-1); align-items: center; }
+.set-cols, .set-row { display: grid; grid-template-columns: 24px 26px minmax(0, 1fr) 72px 52px 44px; gap: var(--s-1); align-items: center; }
 .set-cols { padding: 0 var(--s-1); margin: var(--s-3) 0 var(--s-1); }
-.set-cols span:nth-child(n+3) { text-align: center; }
+.set-cols span:nth-child(n+4) { text-align: center; }
 .set-row { height: var(--row-set); background: var(--bg-2); border-radius: var(--r-md); padding: 0 var(--s-1); margin-top: 6px; transition: background var(--dur-base); position: relative; }
 .set-row .sn { font-family: var(--font-num); font-size: 18px; font-weight: var(--fw-semibold); color: var(--text-2); text-align: center; }
 .set-row .prev { font-size: var(--fs-caption); color: var(--text-3); overflow: hidden; white-space: nowrap; text-overflow: ellipsis; padding-left: 2px; }
@@ -323,8 +328,9 @@ button.day:active { background: var(--bg-2); }
 @keyframes check-pop { from { transform: scale(0.6); } to { transform: scale(1); } }
 @keyframes glow { from { box-shadow: var(--red-glow); } to { box-shadow: none; } }
 @keyframes slide-in { from { transform: translateX(8px); opacity: 0; } to { transform: none; opacity: 1; } }
-.set-actions { display: flex; justify-content: space-between; margin-top: var(--s-1); }
-.btn.ghost.swipe-del { color: var(--text-3); }
+.set-actions { display: flex; justify-content: space-between; align-items: center; margin-top: var(--s-1); }
+.set-x { width: 24px; height: 44px; display: flex; align-items: center; justify-content: center; color: var(--text-3); border-radius: var(--r-sm); }
+.set-x:active { color: var(--danger); background: var(--red-tint); }
 
 /* Rest timer */
 .rest-bar {

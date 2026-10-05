@@ -52,7 +52,7 @@ export function ExerciseDetailScreen() {
             {d.routines.map((r) => (
               <ListRow key={r.item_id} title={r.routine_name} onClick={() => nav(`/routines/${r.routine_id}`)}
                 sub={`${r.working_sets} × ${r.rep_max}${r.state?.target_weight_kg != null ? ` · next ${w(r.state.target_weight_kg, true)} × ${r.state.target_reps.join('/')}` : ''}`}
-                trailing={<StatusBadge status={r.state?.status} pinned={r.state?.pinned} />} />
+                trailing={<StatusBadge status={r.state?.status} pinned={r.state?.pinned} loadType={ex.load_type} />} />
             ))}
           </div>
         </div>

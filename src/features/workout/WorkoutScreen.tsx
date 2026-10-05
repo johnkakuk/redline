@@ -50,6 +50,7 @@ function LiveWorkout({ w }: { w: WorkoutFull }) {
   const started = !!session.started[w.id] || w.exercises.some((e) => e.sets.some((x) => x.completed_at));
   /** Cards the user opened or closed by hand; everything else follows the guided order. */
   const [manual, setManual] = useState<Record<string, boolean>>({});
+  const [removeLogged, setRemoveLogged] = useState<WorkoutSet | null>(null);
   useWakeLock(true);
 
   const key = ['workout', w.id];
@@ -112,6 +113,8 @@ function LiveWorkout({ w }: { w: WorkoutFull }) {
 
   const startWorkout = () => {
     session.start(w.id);
+    setManual({}); // the guided order takes over from here
+
     void db.beginWorkout(w.id).then(() => refresh());
     const first = currentStep(w);
     if (first) scrollToSet(first.setId);
@@ -133,7 +136,7 @@ function LiveWorkout({ w }: { w: WorkoutFull }) {
       void act(db.uncompleteSet(s.id));
     },
     onAddSet: (we) => void act(db.addSet(we.id, 'working')),
-    onRemoveSet: (s) => void act(db.removeSet(s.id)),
+    onRemoveSet: (s) => (s.completed_at ? setRemoveLogged(s) : void act(db.removeSet(s.id))),
     onMenu: (we, a) => {
       if (a === 'swap') setPicker({ mode: 'swap', weId: we.id });
       if (a === 'notes') setNotes({ weId: we.id, text: we.notes ?? '' });
@@ -284,6 +287,8 @@ function LiveWorkout({ w }: { w: WorkoutFull }) {
         { label: 'Discard workout', icon: <Trash2 size={20} />, danger: true, onSelect: () => setConfirm('discard') },
       ]} />
 
+      <ConfirmSheet open={!!removeLogged} onClose={() => setRemoveLogged(null)} title="Remove this logged set?" destructive confirmLabel="Remove"
+        body="It won’t count toward this workout or your progression." onConfirm={() => { if (removeLogged) void act(db.removeSet(removeLogged.id)); }} />
       <ConfirmSheet open={confirm === 'finish'} onClose={() => setConfirm(null)} title="Finish workout?"
         body={`${pending} unfinished ${pending === 1 ? 'set' : 'sets'} will be dropped.`} confirmLabel="Finish" onConfirm={() => void finish()} />
       <ConfirmSheet open={confirm === 'discard'} onClose={() => setConfirm(null)} title="Discard workout?"

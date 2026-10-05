@@ -1,4 +1,4 @@
-import { Check, ChevronDown, Ellipsis, Flame, History, Pin, PinOff, Play, Plus, Repeat, Square, StickyNote, Target, Trash2 } from 'lucide-react';
+import { Check, ChevronDown, ChevronUp, Ellipsis, Flame, History, Pin, PinOff, Play, Plus, Repeat, Square, StickyNote, Target, Trash2, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useUnits } from '../../app/queries';
 import { gt } from '../../engine/rounding';
@@ -56,14 +56,14 @@ export function ExerciseCard({ we, label, currentSetId, running, prSets, expande
   };
 
   // "↑ +5" when this session's suggestion is above last time's top working weight.
-  let badge = <StatusBadge status={we.state?.status} pinned={we.state?.pinned} />;
+  let badge = <StatusBadge status={we.state?.status} pinned={we.state?.pinned} loadType={lt} />;
   const lastTop = Math.max(0, ...we.previous.filter((p) => p.kind === 'working').map((p) => p.weight_kg ?? 0));
   const sug = we.sets.find((s) => s.kind === 'working')?.suggested_weight_kg ?? null;
   if (we.state?.status === 'progressing' && !we.state.pinned && sug != null && lastTop > 0 && gt(sug, lastTop)) {
     badge = <StatusBadge status="progressing" label={`+${w(sug - lastTop)}`} />;
   }
-  if (we.state?.status === 'capped' || we.state?.status === 'variation_suggested') {
-    badge = <StatusBadge status="capped" label={we.cap_kg != null ? `Capped ${w(we.cap_kg)}` : 'Maxed'} />;
+  if ((we.state?.status === 'capped' || we.state?.status === 'variation_suggested') && lt !== 'bodyweight') {
+    badge = <StatusBadge status="capped" label="Capped" />;
   }
 
   const working = we.sets.filter((s) => s.kind === 'working');
@@ -94,7 +94,7 @@ export function ExerciseCard({ we, label, currentSetId, running, prSets, expande
         <>
           {we.notes && <div className="caption" style={{ marginTop: 6 }}>{we.notes}</div>}
           <div className="set-cols micro" aria-hidden>
-            <span style={{ textAlign: 'center' }}>Set</span><span>Previous</span><span>{lt === 'bodyweight' ? '' : lt === 'bodyweight_plus' ? `+${units}` : lt === 'per_hand' ? `${units} ea` : units}</span><span>Reps</span><span />
+            <span /><span style={{ textAlign: 'center' }}>Set</span><span>Previous</span><span>{lt === 'bodyweight' ? '' : lt === 'bodyweight_plus' ? `+${units}` : lt === 'per_hand' ? `${units} ea` : units}</span><span>Reps</span><span />
           </div>
           {we.sets.map((s) => {
             const warm = s.kind === 'warmup';
@@ -109,6 +109,7 @@ export function ExerciseCard({ we, label, currentSetId, running, prSets, expande
             const setName = `Set ${warm ? 'W' : n + 1}`;
             return (
               <div key={s.id} className={`set-row ${done ? 'done' : ''} ${warm ? 'warm' : ''} ${live ? 'live' : currentSetId === s.id ? 'current' : ''}`} data-set={s.id}>
+                <button type="button" className="set-x" onClick={() => h.onRemoveSet(s)} aria-label={`Remove ${setName.toLowerCase()}`}><X size={16} /></button>
                 <span className="sn">{warm ? 'W' : n + 1}</span>
                 <span className="prev">{live ? <SetClock since={running!.startedAt} /> : prevOf(s, n)}</span>
                 {lt === 'bodyweight'
@@ -134,12 +135,7 @@ export function ExerciseCard({ we, label, currentSetId, running, prSets, expande
           })}
           <div className="set-actions">
             <Button variant="ghost" size="sm" onClick={() => h.onAddSet(we)}><Plus size={16} />Add set</Button>
-            {we.sets.some((s) => !s.completed_at) && (
-              <Button variant="ghost" size="sm" className="swipe-del" onClick={() => {
-                const last = [...we.sets].reverse().find((s) => !s.completed_at);
-                if (last) h.onRemoveSet(last);
-              }}>Remove set</Button>
-            )}
+            <button type="button" className="icon-btn" onClick={onToggleExpand} aria-label={`Collapse ${we.exercise.name}`}><ChevronUp size={18} /></button>
           </div>
         </>
       )}

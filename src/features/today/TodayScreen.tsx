@@ -5,7 +5,7 @@ import { useNavigate } from 'react-router-dom';
 import { act, useActiveWorkoutId, useSettings, useUnits } from '../../app/queries';
 import { db } from '../../db/client';
 import { PR_LABEL } from '../../engine/prs';
-import { addDays, fmtDay, localDate, startOfWeek } from '../../shared/time';
+import { addDays, fmtDay, localDate } from '../../shared/time';
 import { fmtCompact } from '../../shared/units';
 import { KeypadSheet } from '../../ui/Keypad';
 import { Button, Card, Delta, EmptyState, ListRow, PrBadge } from '../../ui/primitives';
@@ -14,8 +14,7 @@ import { Screen } from '../../ui/Screen';
 import { toast } from '../../ui/toast';
 import { StarterProgramSheet } from '../onboarding/equipment';
 import { useOpenDay } from '../workout/useOpenDay';
-
-const DOW = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
+import { WeekStrip } from './WeekStrip';
 
 export function TodayScreen() {
   const nav = useNavigate();
@@ -38,7 +37,6 @@ export function TodayScreen() {
     if (id) nav('/workout');
   };
 
-  const monday = startOfWeek();
   const trained = new Set(stats?.trained_dates ?? []);
   const est = next ? Math.round((next.set_count * (40 + (settings?.default_rest_sec ?? 90))) / 60) : 0;
   const nextIdx = next ? routines.findIndex((r) => r.id === next.id) : -1;
@@ -47,18 +45,7 @@ export function TodayScreen() {
 
   return (
     <Screen title="Today" eyebrow={fmtDay(new Date().toISOString(), { weekday: 'long', month: 'short', day: 'numeric' })}>
-      <div className="week" aria-label="This week">
-        {DOW.map((d, i) => {
-          const date = localDate(addDays(monday, i));
-          const done = trained.has(date);
-          const cls = `day ${done ? 'done' : ''} ${date === today ? 'today' : ''}`;
-          const label = fmtDay(date, { weekday: 'long' });
-          // Only days with a workout are tappable; the rest are plain status.
-          return done
-            ? <button key={i} type="button" className={cls} onClick={() => void day.open(date)} aria-label={`${label}: trained, view workout`}><span>{d}</span><i /></button>
-            : <div key={i} className={cls} aria-label={`${label}: ${date === today ? 'today' : 'no workout'}`}><span>{d}</span><i /></div>;
-        })}
-      </div>
+      <WeekStrip trained={trained} onOpenDay={(d) => void day.open(d)} />
       {day.sheet}
 
       <div className="section">

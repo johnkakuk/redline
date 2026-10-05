@@ -1,6 +1,6 @@
 import { ArrowDown, ArrowUp, Check, ChevronRight, Equal, Lock, Minus, Plus, Sparkles, Star } from 'lucide-react';
 import type { ButtonHTMLAttributes, ReactNode } from 'react';
-import type { ProgressionStatus } from '../shared/types';
+import type { LoadType, ProgressionStatus } from '../shared/types';
 
 type BtnVariant = 'primary' | 'secondary' | 'ghost' | 'destructive';
 
@@ -33,7 +33,11 @@ export function Badge({ tone = 'neutral', icon, children }: { tone?: BadgeTone; 
 }
 
 /** Progression status: color is always paired with an icon and a word. */
-export function StatusBadge({ status, pinned, label }: { status: ProgressionStatus | null | undefined; pinned?: boolean; label?: string }) {
+export function StatusBadge({ status, pinned, label, loadType }: {
+  status: ProgressionStatus | null | undefined; pinned?: boolean; label?: string; loadType?: LoadType;
+}) {
+  // Bodyweight exercises have no load to cap; "capped" there just means the rep target was hit.
+  if (loadType === 'bodyweight' && (status === 'capped' || status === 'variation_suggested') && !pinned) return null;
   if (pinned) return <Badge tone="neutral" icon={<Lock />}>{label ?? 'Pinned'}</Badge>;
   switch (status) {
     case 'progressing': return <Badge tone="success" icon={<ArrowUp />}>{label ?? 'Progressing'}</Badge>;

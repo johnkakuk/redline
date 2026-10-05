@@ -251,7 +251,7 @@ function ItemCard({ it, handle, label, open, selecting, selected, onToggleOpen, 
             {it.progression_mode === 'none' ? ' · manual' : ''}
           </div>
         </div>
-        {it.state && <StatusBadge status={it.state.status} pinned={it.state.pinned} />}
+        {it.state && <StatusBadge status={it.state.status} pinned={it.state.pinned} loadType={ex.load_type} />}
         {!selecting && (
           <button type="button" className="icon-btn" style={{ width: 36 }} aria-expanded={open} aria-label={open ? `Collapse ${ex.name}` : `Expand ${ex.name}`}>
             {open ? <ChevronUp size={18} /> : <ChevronDown size={18} />}

@@ -225,7 +225,8 @@ test('routine editor: create an exercise mid-edit without losing anything; picks
   await page.getByRole('button', { name: /New exercise “Ring Dip”/ }).click();
   await expect(page.locator('.sheet').last().getByPlaceholder('Incline DB Press')).toHaveValue('Ring Dip');
   await page.locator('.sheet').last().getByRole('button', { name: 'Save' }).click();
-  await expect(page.getByLabel('Selected 3')).toBeVisible();
+  await expect(page.getByLabel('Selected 3')).toBeAttached();
+  await expect(search).toHaveValue(''); // back to the full list to keep picking
   await page.getByRole('button', { name: /^Add \(3\)/ }).click();
 
   // Nothing typed before was lost, and items are in the order they were picked.
@@ -249,4 +250,85 @@ test('routine editor: create an exercise mid-edit without losing anything; picks
   await page.getByRole('button', { name: /^Push day/ }).click();
   await expect(page.getByPlaceholder('Upper A · Push')).toHaveValue('Push day');
   await expect(page.getByText('Restored your unsaved changes.')).toHaveCount(0);
+});
+
+test('Today week strip: swipe back one week only, today stays marked, snaps back', async ({ page }) => {
+  await onboard(page, undefined, 'Bodyweight');
+  // Log a workout today so today's dot is a tappable button.
+  await page.getByRole('button', { name: 'Start workout' }).click();
+  await startIfNeeded(page);
+  await page.getByRole('button', { name: 'Start set' }).first().click();
+  await page.getByRole('button', { name: 'Finish set' }).click();
+  await page.getByRole('button', { name: 'Finish' }).click();
+  await page.locator('.sheet').getByRole('button', { name: 'Finish' }).click();
+  await expect(page).toHaveURL(/summary/);
+  await page.getByRole('button', { name: 'Done', exact: true }).click();
+
+  const strip = page.locator('.week-viewport');
+  const box = (await strip.boundingBox())!;
+  const swipe = async (dx: number, fromX = box.x + box.width / 2) => {
+    const y = box.y + box.height / 2;
+    await page.mouse.move(fromX, y);
+    await page.mouse.down();
+    for (let i = 1; i <= 6; i++) await page.mouse.move(fromX + (dx * i) / 6, y);
+    await page.mouse.up();
+  };
+
+  await expect(strip).toHaveAttribute('aria-label', /^This week/);
+  // A swipe that starts on today's (tappable) dot moves the strip and does not open the workout.
+  const todayDot = page.getByRole('button', { name: /trained, view workout/ });
+  const dotBox = (await todayDot.boundingBox())!;
+  await swipe(150, dotBox.x + dotBox.width / 2);
+  await expect(strip).toHaveAttribute('aria-label', /^Last week/);
+  await expect(page).not.toHaveURL(/history/);
+  await expect(page.locator('.day.today')).toHaveCount(1); // only today is ever marked
+
+  await swipe(150); // nothing before last week
+  await expect(strip).toHaveAttribute('aria-label', /^Last week/);
+  await swipe(-150);
+  await expect(strip).toHaveAttribute('aria-label', /^This week/);
+  await swipe(-150); // never into the future
+  await expect(strip).toHaveAttribute('aria-label', /^This week/);
+
+  // Snaps back to this week after leaving Today.
+  await swipe(150);
+  await expect(strip).toHaveAttribute('aria-label', /^Last week/);
+  await page.getByRole('link', { name: 'Progress' }).click();
+  await page.getByRole('link', { name: 'Today' }).click();
+  await expect(page.locator('.week-viewport')).toHaveAttribute('aria-label', /^This week/);
+});
+
+test('workout cards: Start opens the first exercise, per-set remove, collapse arrow, no bodyweight cap badge', async ({ page }) => {
+  await onboard(page, undefined, 'Bodyweight');
+  await page.getByRole('button', { name: 'Start workout' }).click();
+  await page.locator('.ex-card').first().waitFor();
+  const first = page.locator('.ex-card').first();
+
+  // Peek at the first exercise before starting, then close it again.
+  await first.locator('.ex-progress').click();
+  await expect(first.locator('.set-row')).toHaveCount(3);
+  await first.getByRole('button', { name: /^Collapse/ }).click();
+  await expect(first.locator('.set-row')).toHaveCount(0);
+
+  // Start still opens it.
+  await page.locator('.start-bar').getByRole('button', { name: 'Start workout' }).click();
+  await expect(first.locator('.set-row')).toHaveCount(3);
+  await expect(first.getByRole('button', { name: /^Collapse/ })).toBeVisible();
+  await expect(first.locator('.badge.capped')).toHaveCount(0);
+
+  // Remove a specific (not the last) set.
+  await first.getByRole('button', { name: 'Set 2 reps' }).click();
+  await keys(page, '7');
+  await sheet(page).getByRole('button', { name: 'Done' }).click();
+  await first.getByRole('button', { name: 'Remove set 2' }).click();
+  await expect(first.locator('.set-row')).toHaveCount(2);
+  await expect(first.getByRole('button', { name: 'Set 2 reps' })).not.toHaveText('7');
+
+  // A logged set asks before it goes.
+  await first.getByRole('button', { name: 'Start set' }).first().click();
+  await first.getByRole('button', { name: 'Finish set' }).click();
+  await first.getByRole('button', { name: 'Remove set 1' }).click();
+  await expect(page.getByText('Remove this logged set?')).toBeVisible();
+  await page.locator('.sheet').getByRole('button', { name: 'Cancel' }).click();
+  await expect(first.locator('.set-row')).toHaveCount(2);
 });

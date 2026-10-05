@@ -214,7 +214,7 @@ export function SettingsScreen() {
 
       <div className="section center caption">
         <div className="wordmark" style={{ fontSize: 28 }}>RED<span>LINE</span></div>
-        <div style={{ marginTop: 4 }}>v{__APP_VERSION__} · schema {boot?.schemaVersion ?? '—'} · {boot?.vfs ?? '…'}</div>
+        <div style={{ marginTop: 4 }}>v{__APP_VERSION__} ({__APP_COMMIT__}) · schema {boot?.schemaVersion ?? '—'} · {boot?.vfs ?? '…'}</div>
       </div>
 
       <StarterProgramSheet open={starter} onClose={() => setStarter(false)} />

@@ -3,6 +3,16 @@ import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import { VitePWA } from 'vite-plugin-pwa';
 import pkg from './package.json' with { type: 'json' };
+import { execSync } from 'node:child_process';
+
+/** Short commit id baked into the build, shown in Settings so you can tell which deploy you're on. */
+function buildId(): string {
+  const git = (cmd: string) => { try { return execSync(cmd, { stdio: ['ignore', 'pipe', 'ignore'] }).toString().trim(); } catch { return ''; } };
+  if (process.env.GITHUB_SHA) return process.env.GITHUB_SHA.slice(0, 7);
+  const sha = git('git rev-parse --short=7 HEAD');
+  if (!sha) return 'dev';
+  return git('git status --porcelain') ? `${sha}-dirty` : sha;
+}
 
 export default defineConfig({
   plugins: [
@@ -40,7 +50,7 @@ export default defineConfig({
       devOptions: { enabled: false },
     }),
   ],
-  define: { __APP_VERSION__: JSON.stringify(pkg.version) },
+  define: { __APP_VERSION__: JSON.stringify(pkg.version), __APP_COMMIT__: JSON.stringify(buildId()) },
   // Local dev and preview talk to the deployed Worker for /api (override with API_ORIGIN).
   server: { proxy: { '/api': { target: process.env.API_ORIGIN ?? 'https://redline.john-24f.workers.dev', changeOrigin: true } } },
   preview: { proxy: { '/api': { target: process.env.API_ORIGIN ?? 'https://redline.john-24f.workers.dev', changeOrigin: true } } },

@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { ArrowDown, ArrowUp, Equal, Lock, RotateCcw, Trash2 } from 'lucide-react';
+import { ArrowDown, ArrowUp, Check, Equal, Lock, RotateCcw, Trash2 } from 'lucide-react';
 import { useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { act, useUnits } from '../../app/queries';
@@ -22,7 +22,9 @@ function ChangeBadge({ c, w }: { c: ProgressionChange; w: (kg: number | null | u
     case 'miss': return <Badge tone="warning" icon={<Equal />}>Hold</Badge>;
     case 'deload': return <Badge tone="warning" icon={<ArrowDown />}>Deload</Badge>;
     case 'capped':
-    case 'variation': return <Badge tone="capped" icon={<Lock />}>Cap</Badge>;
+    case 'variation':
+      // Bodyweight "capped" = rep target hit (no load to cap).
+      return c.after.target_weight_kg == null ? <Badge tone="success" icon={<Check />}>Target hit</Badge> : <Badge tone="capped" icon={<Lock />}>Cap</Badge>;
     case 'baseline': return <Badge tone="neutral">Baseline</Badge>;
     case 'pinned': return <Badge tone="neutral" icon={<Lock />}>Pinned</Badge>;
     default: return <Badge tone="neutral">—</Badge>;
