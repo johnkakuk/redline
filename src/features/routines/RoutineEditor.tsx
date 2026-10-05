@@ -281,7 +281,7 @@ function ItemCard({ it, handle, label, open, selecting, selected, onToggleOpen, 
               </>
             )}
           </div>
-          <div style={{ marginTop: 16 }}>
+          <div style={{ marginTop: 'var(--s-6)' }}>
             <Field label="Notes"><input className="input" value={it.notes ?? ''} onChange={(e) => onPatch({ notes: e.target.value })} placeholder="Cues, seat height…" /></Field>
           </div>
           {it.state?.target_weight_kg != null && (

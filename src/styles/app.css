@@ -170,8 +170,9 @@ button.list-row:active, a.list-row:active { background: var(--bg-2); }
 
 /* ── Forms ── */
 .field { display: block; }
-.field + .field { margin-top: var(--s-3); }
-.field-label { display: block; margin-bottom: 6px; }
+/* Form rhythm: every labelled field or group sits 24px from the one before (same as .section). */
+.field + .field, .field + .form-grid, .form-grid + .field, .form-grid + .form-grid, .section + .field { margin-top: var(--s-6); }
+.field-label { display: block; margin-bottom: var(--s-2); }
 .input, .select, .textarea {
   width: 100%; height: 48px; padding: 0 var(--s-3); border-radius: var(--r-sm);
   background: var(--bg-2); border: 1px solid transparent; font-size: 17px; outline: none;
@@ -184,7 +185,7 @@ button.list-row:active, a.list-row:active { background: var(--bg-2); }
 .search { position: relative; }
 .search svg { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--text-3); pointer-events: none; }
 .search .input { padding-left: 40px; height: 44px; }
-.form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: var(--s-3); }
+.form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: var(--s-6) var(--s-3); }
 .form-grid .field + .field { margin-top: 0; }
 .field-hint { margin-top: 6px; font-size: var(--fs-caption); color: var(--text-2); }
 
@@ -370,8 +371,8 @@ button.day:active { background: var(--bg-2); }
 .drag-handle { touch-action: none; color: var(--text-3); width: 36px; height: 44px; display: flex; align-items: center; justify-content: center; cursor: grab; flex: none; }
 .dragging { position: relative; z-index: 10; box-shadow: 0 12px 32px rgba(0, 0, 0, 0.6); transition: none !important; }
 .sortable-item { transition: transform var(--dur-base) var(--ease-out); }
-.cfg-grid { display: grid; grid-template-columns: 1fr 1fr; gap: var(--s-3); }
-.cfg-grid .micro { display: block; margin-bottom: 6px; }
+.cfg-grid { display: grid; grid-template-columns: 1fr 1fr; gap: var(--s-6) var(--s-3); }
+.cfg-grid .micro { display: block; margin-bottom: var(--s-2); }
 .sticky-bottom { position: sticky; bottom: calc(var(--safe-bottom) + var(--s-3)); z-index: 20; margin-top: var(--s-4); }
 
 /* ── Charts ── */

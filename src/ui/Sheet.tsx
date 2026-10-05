@@ -1,9 +1,30 @@
-import { useEffect, type ReactNode } from 'react';
+import { useEffect, useRef, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 
+/** Matches the sheet-up animation (--dur-slow), plus a frame. */
+const OPEN_MS = 340;
+
+/**
+ * Bottom sheet. Opens scrolled to the top. A field marked `data-autofocus` gets focus only after the
+ * slide-up finishes: focusing mid-animation makes iOS scroll the page to chase the moving field, which
+ * leaves it off-screen once the sheet settles.
+ */
 export function Sheet({ open, onClose, title, left, right, children, full, label }: {
   open: boolean; onClose: () => void; title?: ReactNode; left?: ReactNode; right?: ReactNode; children: ReactNode; full?: boolean; label?: string;
 }) {
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!open) return;
+    const el = ref.current;
+    if (el) { el.scrollTop = 0; const body = el.querySelector('.sheet-body'); if (body) body.scrollTop = 0; }
+    const reduced = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+    const t = setTimeout(() => {
+      const target = ref.current?.querySelector<HTMLElement>('[data-autofocus]');
+      if (!target) return;
+      target.focus({ preventScroll: true });
+    }, reduced ? 0 : OPEN_MS);
+    return () => clearTimeout(t);
+  }, [open]);
   useEffect(() => {
     if (!open) return;
     const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onClose();
@@ -17,7 +38,7 @@ export function Sheet({ open, onClose, title, left, right, children, full, label
   return createPortal(
     <>
       <div className="scrim" onClick={onClose} />
-      <div className={`sheet ${full ? 'full' : ''}`} role="dialog" aria-modal="true" aria-label={label ?? (typeof title === 'string' ? title : undefined)}>
+      <div ref={ref} className={`sheet ${full ? 'full' : ''}`} role="dialog" aria-modal="true" aria-label={label ?? (typeof title === 'string' ? title : undefined)}>
         <div className="sheet-grip" />
         {head && (
           <div className="sheet-head">

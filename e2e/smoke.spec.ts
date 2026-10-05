@@ -220,6 +220,15 @@ test('routine editor: create an exercise mid-edit without losing anything; picks
   await page.getByRole('button', { name: /^Inverted Row/ }).click();
   await expect(page.getByLabel('Selected 2')).toBeVisible();
 
+  // A blank "New exercise" opens at the top with the name field focused (after the slide-up).
+  await search.fill('');
+  await page.getByRole('button', { name: 'New exercise', exact: true }).click();
+  const nameField = page.locator('.sheet').last().getByPlaceholder('Incline DB Press');
+  await expect(nameField).toBeFocused();
+  expect(await page.locator('.sheet').last().locator('.sheet-body').evaluate((el) => el.scrollTop)).toBe(0);
+  expect(await nameField.evaluate((el) => el.getBoundingClientRect().top)).toBeGreaterThan(0);
+  await page.locator('.sheet').last().getByRole('button', { name: 'Cancel' }).click();
+
   // Not in the library: create it inline, prefilled from the search.
   await search.fill('Ring Dip');
   await page.getByRole('button', { name: /New exercise “Ring Dip”/ }).click();

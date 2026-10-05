@@ -320,7 +320,7 @@ function LiveWorkout({ w }: { w: WorkoutFull }) {
           else await act(db.updateWorkoutMeta(w.id, { notes: notes.text }));
           setNotes(null);
         }}>Save</button>}>
-        <textarea className="textarea" autoFocus value={notes?.text ?? ''} onChange={(e) => setNotes((n) => n && { ...n, text: e.target.value })} placeholder="Seat height, cues, how it felt…" />
+        <textarea className="textarea" data-autofocus value={notes?.text ?? ''} onChange={(e) => setNotes((n) => n && { ...n, text: e.target.value })} placeholder="Seat height, cues, how it felt…" />
       </Sheet>
 
       <HistorySheet we={historyFor} onClose={() => setHistoryFor(null)} />

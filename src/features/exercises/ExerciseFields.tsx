@@ -22,10 +22,12 @@ export function blankExercise(name = '', owned: Equipment[] = ['dumbbell']): Exe
 }
 
 /** The exercise form's fields. Used by the full-screen editor and the inline "New exercise" sheet. */
-export function ExerciseFields({ f, set, autoFocus, nested }: {
+export function ExerciseFields({ f, set, autoFocus, focusInSheet, nested }: {
   f: ExerciseInput;
   set: <K extends keyof ExerciseInput>(k: K, v: ExerciseInput[K]) => void;
   autoFocus?: boolean;
+  /** Focus the name once the containing sheet has finished opening (see Sheet). */
+  focusInSheet?: boolean;
   /** Inside the picker's create sheet: no further "New exercise" from the variation picker. */
   nested?: boolean;
 }) {
@@ -45,8 +47,8 @@ export function ExerciseFields({ f, set, autoFocus, nested }: {
 
   return (
     <>
-      <Field label="Name"><input className="input" value={f.name} onChange={(e) => set('name', e.target.value)} placeholder="Incline DB Press" autoFocus={autoFocus} /></Field>
-      <div className="form-grid" style={{ marginTop: 12 }}>
+      <Field label="Name"><input className="input" value={f.name} onChange={(e) => set('name', e.target.value)} placeholder="Incline DB Press" autoFocus={autoFocus} data-autofocus={focusInSheet || undefined} /></Field>
+      <div className="form-grid">
         <Field label="Equipment">
           <select className="select" value={f.equipment} onChange={(e) => {
             const eq = e.target.value as Equipment;
@@ -80,7 +82,7 @@ export function ExerciseFields({ f, set, autoFocus, nested }: {
         </div>
       </div>
       {!bw && (
-        <div className="form-grid" style={{ marginTop: 12 }}>
+        <div className="form-grid">
           <Field label="Increment" hint={<Term k="increment">{f.load_type === 'per_hand' ? 'Per dumbbell' : 'Step size'}</Term>} group>
             <ValueButton label="Increment" value={f.default_increment_kg != null ? w(f.default_increment_kg) : null} unit={units}
               placeholder={`${w(defInc)} ${units} default`} onClick={() => setKp('inc')} />
@@ -90,7 +92,7 @@ export function ExerciseFields({ f, set, autoFocus, nested }: {
           </Field>
         </div>
       )}
-      <div className="field" style={{ marginTop: 12 }}>
+      <div className="field">
         <span className="micro field-label">Default rest</span>
         <Stepper label="rest" value={f.default_rest_sec ?? settings?.default_rest_sec ?? 90} min={0} max={600} step={15}
           format={(s) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`} onChange={(v) => set('default_rest_sec', v)} />

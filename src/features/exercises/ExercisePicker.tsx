@@ -122,7 +122,7 @@ function NewExerciseSheet({ open, initialName, onClose, onCreated }: {
     <Sheet open={open} onClose={onClose} full title="New exercise"
       left={<button type="button" className="navbtn" onClick={onClose}>Cancel</button>}
       right={<button type="button" className="navbtn strong" disabled={!f.name.trim() || saving} onClick={() => void save()}>Save</button>}>
-      <ExerciseFields f={f} set={set} autoFocus={!initialName} nested />
+      <ExerciseFields f={f} set={set} focusInSheet={!initialName} nested />
     </Sheet>
   );
 }
