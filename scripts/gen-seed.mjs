@@ -80,9 +80,9 @@ Deficit Push-up|bodyweight|bodyweight|chest|triceps,front_delts|Archer Push-up|
 Archer Push-up|bodyweight|bodyweight|chest|triceps,front_delts,obliques||
 Inverted Row|bodyweight|bodyweight|upper_back|lats,biceps,rear_delts|Feet-Elevated Inverted Row|
 Feet-Elevated Inverted Row|bodyweight|bodyweight|upper_back|lats,biceps,rear_delts|Pull-up|
-Pull-up|bodyweight|bodyweight|lats|biceps,upper_back|Weighted Pull-up|120
-Weighted Pull-up|bodyweight|bodyweight_plus|lats|biceps,upper_back||150
-Chin-up|bodyweight|bodyweight|lats|biceps||120
+Pull-up|pull_up_bar|bodyweight|lats|biceps,upper_back|Weighted Pull-up|120
+Weighted Pull-up|pull_up_bar|bodyweight_plus|lats|biceps,upper_back||150
+Chin-up|pull_up_bar|bodyweight|lats|biceps||120
 Dip|bodyweight|bodyweight|chest|triceps,front_delts|Weighted Dip|120
 Weighted Dip|bodyweight|bodyweight_plus|chest|triceps,front_delts||150
 Bodyweight Squat|bodyweight|bodyweight|quads|glutes|Split Squat|
@@ -91,16 +91,29 @@ Assisted Pistol Squat|bodyweight|bodyweight|quads|glutes|Pistol Squat|
 Pistol Squat|bodyweight|bodyweight|quads|glutes,abs||
 Glute Bridge|bodyweight|bodyweight|glutes|hamstrings|Single-Leg Glute Bridge|
 Single-Leg Glute Bridge|bodyweight|bodyweight|glutes|hamstrings||
-Hanging Knee Raise|bodyweight|bodyweight|abs|obliques|Hanging Leg Raise|
-Hanging Leg Raise|bodyweight|bodyweight|abs|obliques||
+Hanging Knee Raise|pull_up_bar|bodyweight|abs|obliques|Hanging Leg Raise|
+Hanging Leg Raise|pull_up_bar|bodyweight|abs|obliques||
 Plank|bodyweight|bodyweight|abs|obliques||
 Side Plank|bodyweight|bodyweight|obliques|abs||
+Dead Bug|bodyweight|bodyweight|abs|obliques|Tuck Hollow Hold|
+Tuck Hollow Hold|bodyweight|bodyweight|abs|obliques|Hollow Body Hold|
+Hollow Body Hold|bodyweight|bodyweight|abs|obliques|Hollow Rock|
+Hollow Rock|bodyweight|bodyweight|abs|obliques|V-Up|
+V-Up|bodyweight|bodyweight|abs|obliques||
 Bodyweight Calf Raise|bodyweight|bodyweight|calves|||
 Band Pull-Apart|band|total|rear_delts|upper_back||
 Band Triceps Pushdown|band|total|triceps|||
 `.trim().split('\n');
 
-const notes = { Plank: 'Log seconds as reps.', 'Side Plank': 'Log seconds per side as reps.' };
+const notes = {
+  Plank: 'Log seconds as reps.',
+  'Side Plank': 'Log seconds per side as reps.',
+  'Dead Bug': 'Low back stays flat on the floor. Count each side as one rep.',
+  'Tuck Hollow Hold': 'Log seconds as reps. Knees in, low back pressed down.',
+  'Hollow Body Hold': 'Log seconds as reps. Arms overhead, legs straight, low back pressed down.',
+  'Hollow Rock': 'Lower back pressed down, arms and legs long. Bend the knees to make it easier.',
+  'V-Up': 'Reach hands to feet at the top; lower slowly back to the hollow position.',
+};
 const out = rows.map((r) => {
   const [name, equipment, load_type, primary, secondary, harder, rest] = r.split('|');
   return {

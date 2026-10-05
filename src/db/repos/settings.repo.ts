@@ -1,4 +1,4 @@
-import type { Equipment, Intensity, Settings, Sex, Units } from '../../shared/types';
+import { EQUIPMENT, type Equipment, type Intensity, type Settings, type Sex, type Units } from '../../shared/types';
 import { lbToKg } from '../../shared/units';
 import type { Db, Row } from '../sqlite';
 
@@ -6,13 +6,16 @@ import type { Db, Row } from '../sqlite';
 export const DEFAULT_INCREMENTS: Record<Units, Record<Equipment, number>> = {
   lb: {
     barbell: lbToKg(5), dumbbell: lbToKg(5), kettlebell: 4, cable: lbToKg(10), machine: lbToKg(10),
-    bodyweight: lbToKg(5), band: lbToKg(5), other: lbToKg(5),
+    pull_up_bar: lbToKg(5), bodyweight: lbToKg(5), band: lbToKg(5), other: lbToKg(5),
   },
-  kg: { barbell: 2.5, dumbbell: 2, kettlebell: 4, cable: 5, machine: 5, bodyweight: 2.5, band: 2.5, other: 2.5 },
+  kg: { barbell: 2.5, dumbbell: 2, kettlebell: 4, cable: 5, machine: 5, pull_up_bar: 2.5, bodyweight: 2.5, band: 2.5, other: 2.5 },
 };
 
 export function ensureSettings(db: Db) {
-  db.run(`INSERT OR IGNORE INTO settings (id, default_increment_json) VALUES ('me', ?)`, [JSON.stringify(DEFAULT_INCREMENTS.lb)]);
+  // Until onboarding asks, assume everything is available.
+  db.run(`INSERT OR IGNORE INTO settings (id, default_increment_json, equipment_json) VALUES ('me', ?, ?)`, [
+    JSON.stringify(DEFAULT_INCREMENTS.lb), JSON.stringify(EQUIPMENT.filter((e) => e !== 'bodyweight')),
+  ]);
 }
 
 function toSettings(r: Row): Settings {

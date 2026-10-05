@@ -360,6 +360,7 @@ button.day:active { background: var(--bg-2); }
 .item-card.grouped { border-left: 3px solid var(--red-500); }
 .select-dot { width: 24px; height: 24px; border-radius: 50%; border: 1.5px solid var(--border-2); display: flex; align-items: center; justify-content: center; flex: none; }
 .select-dot.on { background: var(--red-500); border-color: var(--red-500); color: #fff; }
+.select-dot .num { font-size: 13px; font-weight: var(--fw-bold); }
 .drag-handle { touch-action: none; color: var(--text-3); width: 36px; height: 44px; display: flex; align-items: center; justify-content: center; cursor: grab; flex: none; }
 .dragging { position: relative; z-index: 10; box-shadow: 0 12px 32px rgba(0, 0, 0, 0.6); transition: none !important; }
 .sortable-item { transition: transform var(--dur-base) var(--ease-out); }

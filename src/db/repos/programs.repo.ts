@@ -74,8 +74,10 @@ function pick(db: Db, slot: Slot, available: Set<Equipment>): Exercise | null {
 /** Preview the program for the user's equipment without saving it. */
 export function previewStarterProgram(db: Db, kind: ProgramKind) {
   const s = getSettings(db);
-  const available = new Set<Equipment>(kind === 'bodyweight' ? ['bodyweight'] : availableEquipment(s));
-  const onlyBw = available.size === 1;
+  const owned = availableEquipment(s);
+  // A pull-up bar is still bodyweight training, so the bodyweight program uses one when you have it.
+  const available = new Set<Equipment>(kind === 'bodyweight' ? owned.filter((e) => e === 'bodyweight' || e === 'pull_up_bar') : owned);
+  const onlyBw = [...available].every((e) => e === 'bodyweight' || e === 'pull_up_bar');
   return FULL_BODY.map((t) => {
     const groups = new Map<string, string>();
     const items: (RoutineItemInput & { name: string })[] = [];

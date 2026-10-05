@@ -20,6 +20,20 @@ type Draft = RoutineItemInput & { id: string; exercise: Exercise; state: Progres
 
 const TMP = 'tmp-';
 
+// Unsaved edits are kept on this device until saved or discarded, so leaving the editor
+// (or iOS closing the app) never loses work. Per-device convenience only.
+interface StoredDraft { name: string; notes: string; items: Draft[]; at: string }
+const draftKey = (id: string) => `redline-routine-draft:${id}`;
+function readDraft(id: string): StoredDraft | null {
+  try { const v = localStorage.getItem(draftKey(id)); return v ? (JSON.parse(v) as StoredDraft) : null; } catch { return null; }
+}
+function writeDraft(id: string, d: StoredDraft | null) {
+  try { if (d) localStorage.setItem(draftKey(id), JSON.stringify(d)); else localStorage.removeItem(draftKey(id)); } catch { /* storage unavailable */ }
+}
+/** What counts as an edit: everything except display-only exercise/state objects. */
+const fingerprint = (name: string, notes: string, items: Draft[]) =>
+  JSON.stringify([name, notes, items.map(({ exercise: _e, state: _s, isNew: _n, ...rest }) => rest)]);
+
 function defaultsFor(ex: Exercise): Partial<RoutineItem> {
   if (ex.load_type === 'bodyweight') return { working_sets: 3, rep_min: 8, rep_max: 15 };
   if (ex.equipment === 'barbell' && ex.default_rest_sec && ex.default_rest_sec >= 150) return { working_sets: 3, rep_min: 5, rep_max: 8, warmup_sets: 3 };
@@ -37,21 +51,53 @@ export function RoutineEditor() {
   const [name, setName] = useState('');
   const [notes, setNotes] = useState('');
   const [items, setItems] = useState<Draft[]>([]);
-  const [loaded, setLoaded] = useState(isNew);
+  const [loaded, setLoaded] = useState(false);
   const [open, setOpen] = useState<string | null>(null);
   const [selecting, setSelecting] = useState(false);
   const [selected, setSelected] = useState<string[]>([]);
   const [picker, setPicker] = useState<null | 'add' | { replace: string }>(null);
   const [confirm, setConfirm] = useState<null | 'delete'>(null);
   const [saving, setSaving] = useState(false);
+  const [baseline, setBaseline] = useState<string | null>(null);
+  const [restored, setRestored] = useState(false);
+  const [leaving, setLeaving] = useState(false);
+  const key = rawId ?? 'new';
 
+  const apply = (n: string, no: string, it: Draft[]) => { setName(n); setNotes(no); setItems(it); };
+
+  // Load the saved routine (or a blank one), then any unsaved draft on top of it.
   useEffect(() => {
-    if (!routine || loaded) return;
-    setName(routine.name);
-    setNotes(routine.notes ?? '');
-    setItems(routine.items.map((i) => ({ ...i })));
-    setLoaded(true);
-  }, [routine, loaded]);
+    if (loaded && baseline != null) return;
+    if (!isNew && !routine) return;
+    const base = { name: routine?.name ?? '', notes: routine?.notes ?? '', items: (routine?.items ?? []).map((i) => ({ ...i }) as Draft) };
+    setBaseline(fingerprint(base.name, base.notes, base.items));
+    apply(base.name, base.notes, base.items);
+    const draft = readDraft(key);
+    if (!draft) { setLoaded(true); return; }
+    // Refresh exercise details; drop any exercise deleted since the draft was made.
+    void Promise.all(draft.items.map((i) => db.getExercise(i.exercise_id).then((exercise) => ({ ...i, exercise })).catch(() => null))).then((its) => {
+      apply(draft.name, draft.notes, its.filter((x): x is Draft => x != null));
+      setRestored(true);
+      setLoaded(true);
+    });
+  }, [routine, isNew, loaded, baseline, key]);
+
+  const dirty = loaded && baseline != null && fingerprint(name, notes, items) !== baseline;
+
+  // Autosave the draft while there are unsaved changes.
+  useEffect(() => {
+    if (!loaded) return;
+    writeDraft(key, dirty ? { name, notes, items, at: new Date().toISOString() } : null);
+  }, [loaded, dirty, name, notes, items, key]);
+
+  const discard = () => {
+    writeDraft(key, null);
+    setRestored(false);
+    setBaseline(null);
+    setLoaded(false); // reload from the saved routine
+  };
+
+  const leave = () => (dirty ? setLeaving(true) : nav(-1));
 
   const patch = (id: string, p: Partial<Draft>) => setItems((xs) => xs.map((x) => (x.id === id ? { ...x, ...p } : x)));
 
@@ -110,15 +156,26 @@ export function RoutineEditor() {
       items: items.map(({ exercise: _e, state: _s, isNew: _n, id, ...rest }) => ({ ...rest, id: id.startsWith(TMP) ? undefined : id })),
     }));
     setSaving(false);
-    if (id) { toast('Routine saved', 'success'); nav('/routines', { replace: true }); }
+    if (id) {
+      writeDraft(key, null);
+      setBaseline(fingerprint(name, notes, items)); // stop autosave before leaving
+      toast('Routine saved', 'success');
+      nav('/routines', { replace: true });
+    }
   };
 
   if (!loaded) return <PushScreen title="Routine"><div aria-busy="true" /></PushScreen>;
   const selGroups = new Set(items.filter((x) => selected.includes(x.id)).map((x) => x.group_id));
 
   return (
-    <PushScreen title={isNew ? 'New routine' : 'Edit routine'} backLabel="Cancel"
+    <PushScreen title={isNew ? 'New routine' : 'Edit routine'} backLabel="Cancel" back={leave}
       right={<button type="button" className="navbtn strong" disabled={saving || !name.trim()} onClick={() => void save()}>Save</button>}>
+      {restored && dirty && (
+        <div className="banner info" role="status">
+          <span className="grow">Restored your unsaved changes.</span>
+          <button type="button" className="red" style={{ fontWeight: 600 }} onClick={discard}>Discard</button>
+        </div>
+      )}
       <Field label="Name"><input className="input" value={name} onChange={(e) => setName(e.target.value)} placeholder="Upper A · Push" autoFocus={isNew} /></Field>
       <Field label="Notes"><input className="input" value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Optional" /></Field>
 
@@ -160,8 +217,10 @@ export function RoutineEditor() {
 
       <ExercisePicker open={!!picker} single={typeof picker === 'object' && picker !== null} title={picker === 'add' ? 'Add exercises' : 'Change exercise'}
         onClose={() => setPicker(null)} onPick={(ids) => { if (picker === 'add') void add(ids); else if (picker) void replace(picker.replace, ids[0]); }} />
+      <ConfirmSheet open={leaving} onClose={() => setLeaving(false)} title="Discard changes?" confirmLabel="Discard" destructive
+        body="Your edits to this routine haven’t been saved." onConfirm={() => { writeDraft(key, null); setBaseline(fingerprint(name, notes, items)); nav(-1); }} />
       <ConfirmSheet open={confirm === 'delete'} onClose={() => setConfirm(null)} title="Delete routine?" destructive confirmLabel="Delete"
-        body="Past workouts stay in your history." onConfirm={async () => { await act(db.deleteRoutine(rawId!)); nav('/routines', { replace: true }); }} />
+        body="Past workouts stay in your history." onConfirm={async () => { writeDraft(key, null); await act(db.deleteRoutine(rawId!)); nav('/routines', { replace: true }); }} />
     </PushScreen>
   );
 }

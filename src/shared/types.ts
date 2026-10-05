@@ -7,7 +7,7 @@ export const MUSCLES = [
 ] as const;
 export type Muscle = (typeof MUSCLES)[number];
 
-export const EQUIPMENT = ['barbell', 'dumbbell', 'kettlebell', 'cable', 'machine', 'bodyweight', 'band', 'other'] as const;
+export const EQUIPMENT = ['barbell', 'dumbbell', 'kettlebell', 'cable', 'machine', 'pull_up_bar', 'bodyweight', 'band', 'other'] as const;
 export type Equipment = (typeof EQUIPMENT)[number];
 
 export const LOAD_TYPES = ['total', 'per_hand', 'bodyweight', 'bodyweight_plus'] as const;

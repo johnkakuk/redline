@@ -10,7 +10,7 @@ export const MUSCLE_LABEL: Record<Muscle, string> = {
 
 export const EQUIPMENT_LABEL: Record<Equipment, string> = {
   barbell: 'Barbell', dumbbell: 'Dumbbell', kettlebell: 'Kettlebell', cable: 'Cable',
-  machine: 'Machine', bodyweight: 'Bodyweight', band: 'Band', other: 'Other',
+  machine: 'Machine', pull_up_bar: 'Pull-up bar', bodyweight: 'Bodyweight', band: 'Band', other: 'Other',
 };
 
 export const LOAD_TYPE_LABEL: Record<LoadType, string> = {

@@ -2,6 +2,7 @@ import sqlite3InitModule from '@sqlite.org/sqlite-wasm';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { lbToKg, fromKg } from '../shared/units';
 import { createApi, type DbApi } from './api';
+import { MIGRATIONS } from './migrate';
 import { wrapDb, type Oo1Db } from './sqlite';
 
 const sqlite3 = await sqlite3InitModule();
@@ -35,7 +36,7 @@ beforeEach(() => {
 
 describe('boot', () => {
   it('migrates, seeds ~100 exercises with linked variation chains', () => {
-    expect(api.boot().schemaVersion).toBe(3);
+    expect(api.boot().schemaVersion).toBe(4);
     expect(api.listExercises().length).toBeGreaterThan(80);
     const push = ex('Push-up');
     expect(push.harder_variation_id).toBe(ex('Decline Push-up').id);
@@ -47,6 +48,20 @@ describe('boot', () => {
   it('seeded exercises have the same ids on every install; old random ids are remapped', () => {
     expect(ex('Push-up').id).toBe('seed-push-up');
     expect(fresh().findExerciseByName('DB Bench Press')!.id).toBe(ex('DB Bench Press').id);
+  });
+
+  it('includes Hollow Rock (bodyweight abs)', () => {
+    expect(ex('Hollow Rock')).toMatchObject({ id: 'seed-hollow-rock', equipment: 'bodyweight', load_type: 'bodyweight', primary_muscle: 'abs' });
+  });
+
+  it('hollow progression is chained easier → harder', () => {
+    const chain = ['Dead Bug', 'Tuck Hollow Hold', 'Hollow Body Hold', 'Hollow Rock', 'V-Up'];
+    chain.forEach((name, i) => {
+      const e = ex(name);
+      expect(e.equipment).toBe('bodyweight');
+      expect(e.harder_variation_id).toBe(i < chain.length - 1 ? ex(chain[i + 1]).id : null);
+      expect(e.easier_variation_id).toBe(i > 0 ? ex(chain[i - 1]).id : null);
+    });
   });
 
   it('seeding is idempotent', () => {
@@ -297,6 +312,33 @@ describe('workout loop', () => {
   });
 });
 
+describe('migration 004 (pull-up bar) on an existing install', () => {
+  const upgrade = (equipmentJson: string | null) => {
+    const raw = wrapDb(new sqlite3.oo1.DB(':memory:', 'c') as unknown as Oo1Db);
+    for (const m of MIGRATIONS.filter((x) => x.version <= 3)) raw.exec(m.sql);
+    raw.run(equipmentJson == null ? `INSERT INTO settings (id) VALUES ('me')` : `INSERT INTO settings (id, equipment_json) VALUES ('me', ?)`, equipmentJson == null ? [] : [equipmentJson]);
+    raw.run(`INSERT INTO exercises (id, name, primary_muscle, equipment, load_type, is_seeded) VALUES ('x', 'Pull-up', 'lats', 'bodyweight', 'bodyweight', 1)`);
+    raw.run(`INSERT INTO exercises (id, name, primary_muscle, equipment, load_type, is_seeded) VALUES ('y', 'Pull-up', 'lats', 'bodyweight', 'bodyweight', 0)`);
+    raw.exec(MIGRATIONS.find((x) => x.version === 4)!.sql);
+    return {
+      owned: JSON.parse(raw.get<{ e: string }>(`SELECT equipment_json AS e FROM settings`)!.e) as string[],
+      seeded: raw.get<{ e: string }>(`SELECT equipment AS e FROM exercises WHERE id = 'x'`)!.e,
+      custom: raw.get<{ e: string }>(`SELECT equipment AS e FROM exercises WHERE id = 'y'`)!.e,
+    };
+  };
+
+  it('default "own everything" installs gain the bar; seeded bar exercises move, custom ones do not', () => {
+    const r = upgrade(null);
+    expect(r.owned).toContain('pull_up_bar');
+    expect(r.seeded).toBe('pull_up_bar');
+    expect(r.custom).toBe('bodyweight');
+  });
+
+  it('installs that picked their equipment keep their choice', () => {
+    expect(upgrade('["dumbbell"]').owned).toEqual(['dumbbell']);
+  });
+});
+
 describe('equipment + starter programs', () => {
   const equipmentOf = (ids: string[]) => ids.flatMap((id) => api.getRoutine(id).items.map((i) => i.exercise.equipment));
 
@@ -338,9 +380,28 @@ describe('equipment + starter programs', () => {
     expect(api.listRoutines()[0].name).toBe('Full Body A');
   });
 
+  it('pull-up bar: its exercises need it; the bodyweight program uses it when owned', () => {
+    expect(ex('Pull-up').equipment).toBe('pull_up_bar');
+    expect(api.getSettings().owned_equipment).toContain('pull_up_bar'); // default: everything
+    api.setEquipment(['pull_up_bar'], {});
+    const ids = api.createStarterProgram('bodyweight');
+    const names = ids.flatMap((id) => api.getRoutine(id).items.map((i) => i.exercise.name));
+    expect(names).toContain('Pull-up');
+    expect(names).toContain('Hanging Knee Raise');
+    expect(api.listRoutines()[0].name).toBe('Bodyweight A');
+  });
+
+  it('no bar → bar exercises swapped for floor/table alternatives', () => {
+    api.setEquipment([], {});
+    const names = api.createStarterProgram('bodyweight').flatMap((id) => api.getRoutine(id).items.map((i) => i.exercise.name));
+    expect(names).not.toContain('Pull-up');
+    expect(names).toContain('Feet-Elevated Inverted Row');
+    expect(names).toContain('Side Plank');
+  });
+
   it('bodyweight program ignores owned equipment', () => {
     const ids = api.createStarterProgram('bodyweight');
-    expect(new Set(equipmentOf(ids))).toEqual(new Set(['bodyweight']));
+    expect(new Set(equipmentOf(ids))).toEqual(new Set(['bodyweight', 'pull_up_bar']));
   });
 
   it('library filters by several muscles and sorts', () => {

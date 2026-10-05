@@ -999,7 +999,7 @@
  },
  {
   "name": "Pull-up",
-  "equipment": "bodyweight",
+  "equipment": "pull_up_bar",
   "load_type": "bodyweight",
   "primary_muscle": "lats",
   "secondary_muscles": [
@@ -1012,7 +1012,7 @@
  },
  {
   "name": "Weighted Pull-up",
-  "equipment": "bodyweight",
+  "equipment": "pull_up_bar",
   "load_type": "bodyweight_plus",
   "primary_muscle": "lats",
   "secondary_muscles": [
@@ -1025,7 +1025,7 @@
  },
  {
   "name": "Chin-up",
-  "equipment": "bodyweight",
+  "equipment": "pull_up_bar",
   "load_type": "bodyweight",
   "primary_muscle": "lats",
   "secondary_muscles": [
@@ -1137,7 +1137,7 @@
  },
  {
   "name": "Hanging Knee Raise",
-  "equipment": "bodyweight",
+  "equipment": "pull_up_bar",
   "load_type": "bodyweight",
   "primary_muscle": "abs",
   "secondary_muscles": [
@@ -1149,7 +1149,7 @@
  },
  {
   "name": "Hanging Leg Raise",
-  "equipment": "bodyweight",
+  "equipment": "pull_up_bar",
   "load_type": "bodyweight",
   "primary_muscle": "abs",
   "secondary_muscles": [
@@ -1182,6 +1182,66 @@
   "harder": null,
   "default_rest_sec": null,
   "notes": "Log seconds per side as reps."
+ },
+ {
+  "name": "Dead Bug",
+  "equipment": "bodyweight",
+  "load_type": "bodyweight",
+  "primary_muscle": "abs",
+  "secondary_muscles": [
+   "obliques"
+  ],
+  "harder": "Tuck Hollow Hold",
+  "default_rest_sec": null,
+  "notes": "Low back stays flat on the floor. Count each side as one rep."
+ },
+ {
+  "name": "Tuck Hollow Hold",
+  "equipment": "bodyweight",
+  "load_type": "bodyweight",
+  "primary_muscle": "abs",
+  "secondary_muscles": [
+   "obliques"
+  ],
+  "harder": "Hollow Body Hold",
+  "default_rest_sec": null,
+  "notes": "Log seconds as reps. Knees in, low back pressed down."
+ },
+ {
+  "name": "Hollow Body Hold",
+  "equipment": "bodyweight",
+  "load_type": "bodyweight",
+  "primary_muscle": "abs",
+  "secondary_muscles": [
+   "obliques"
+  ],
+  "harder": "Hollow Rock",
+  "default_rest_sec": null,
+  "notes": "Log seconds as reps. Arms overhead, legs straight, low back pressed down."
+ },
+ {
+  "name": "Hollow Rock",
+  "equipment": "bodyweight",
+  "load_type": "bodyweight",
+  "primary_muscle": "abs",
+  "secondary_muscles": [
+   "obliques"
+  ],
+  "harder": "V-Up",
+  "default_rest_sec": null,
+  "notes": "Lower back pressed down, arms and legs long. Bend the knees to make it easier."
+ },
+ {
+  "name": "V-Up",
+  "equipment": "bodyweight",
+  "load_type": "bodyweight",
+  "primary_muscle": "abs",
+  "secondary_muscles": [
+   "obliques"
+  ],
+  "harder": null,
+  "default_rest_sec": null,
+  "notes": "Reach hands to feet at the top; lower slowly back to the hollow position."
  },
  {
   "name": "Bodyweight Calf Raise",

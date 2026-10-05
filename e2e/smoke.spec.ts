@@ -185,3 +185,46 @@ test('login is optional and lives at /login', async ({ page }) => {
   await page.getByRole('button', { name: 'Redline' }).click();
   await expect(page.getByRole('heading', { name: 'Today' })).toBeVisible();
 });
+
+test('routine editor: create an exercise mid-edit without losing anything; picks keep their order', async ({ page }) => {
+  await onboard(page);
+  await page.getByRole('button', { name: 'Create routine' }).click();
+  await page.getByPlaceholder('Upper A · Push').fill('Push day');
+  await page.getByRole('button', { name: 'Add exercises' }).click();
+  const search = page.getByPlaceholder('Search exercises');
+  await search.fill('push-up');
+  await page.getByRole('button', { name: /^Push-up/ }).click();
+  await search.fill('inverted row');
+  await page.getByRole('button', { name: /^Inverted Row/ }).click();
+  await expect(page.getByLabel('Selected 2')).toBeVisible();
+
+  // Not in the library: create it inline, prefilled from the search.
+  await search.fill('Ring Dip');
+  await page.getByRole('button', { name: /New exercise “Ring Dip”/ }).click();
+  await expect(page.locator('.sheet').last().getByPlaceholder('Incline DB Press')).toHaveValue('Ring Dip');
+  await page.locator('.sheet').last().getByRole('button', { name: 'Save' }).click();
+  await expect(page.getByLabel('Selected 3')).toBeVisible();
+  await page.getByRole('button', { name: /^Add \(3\)/ }).click();
+
+  // Nothing typed before was lost, and items are in the order they were picked.
+  await expect(page.getByPlaceholder('Upper A · Push')).toHaveValue('Push day');
+  await expect(page.locator('.item-card .grow > div:first-child')).toHaveText(['Push-up', 'Inverted Row', 'Ring Dip']);
+  await page.getByRole('button', { name: 'Save' }).click();
+  await expect(page).toHaveURL(/\/routines$/);
+  await page.getByRole('button', { name: /^Push day/ }).click();
+  await expect(page.locator('.item-card .grow > div:first-child')).toHaveText(['Push-up', 'Inverted Row', 'Ring Dip']);
+
+  // Unsaved edits survive leaving the editor, and Cancel asks before throwing them away.
+  await page.getByPlaceholder('Upper A · Push').fill('Push day v2');
+  await page.getByRole('link', { name: 'Today' }).click();
+  await page.getByRole('link', { name: 'Routines' }).click();
+  await page.getByRole('button', { name: /^Push day/ }).click();
+  await expect(page.getByText('Restored your unsaved changes.')).toBeVisible();
+  await expect(page.getByPlaceholder('Upper A · Push')).toHaveValue('Push day v2');
+  await page.getByRole('button', { name: 'Cancel' }).click();
+  await expect(page.getByText('Discard changes?')).toBeVisible();
+  await page.locator('.sheet').getByRole('button', { name: 'Discard' }).click();
+  await page.getByRole('button', { name: /^Push day/ }).click();
+  await expect(page.getByPlaceholder('Upper A · Push')).toHaveValue('Push day');
+  await expect(page.getByText('Restored your unsaved changes.')).toHaveCount(0);
+});

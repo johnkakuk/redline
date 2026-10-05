@@ -16,6 +16,7 @@ export const EQUIPMENT_ROWS: { key: Equipment; label: string; cap?: string }[] =
   { key: 'barbell', label: 'Barbell + plates' },
   { key: 'cable', label: 'Cable machine' },
   { key: 'machine', label: 'Weight machines' },
+  { key: 'pull_up_bar', label: 'Pull-up bar' },
   { key: 'band', label: 'Resistance bands' },
 ];
 
@@ -90,7 +91,7 @@ export function ProgramPreview({ kind }: { kind: ProgramKind }) {
 export function StarterProgramSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
   const nav = useNavigate();
   const settings = useQuery({ queryKey: ['settings'], queryFn: () => db.getSettings() }).data;
-  const onlyBw = !settings?.owned_equipment.length;
+  const onlyBw = !!settings && settings.owned_equipment.every((e) => e === 'pull_up_bar');
   const [kind, setKind] = useState<ProgramKind>('equipment');
   const k: ProgramKind = onlyBw ? 'bodyweight' : kind;
   return (

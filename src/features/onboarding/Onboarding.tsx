@@ -21,7 +21,7 @@ export function Onboarding() {
   const [equipment, setEquipment] = useState<EquipmentValue>({ owned: [], caps: {} });
   const [program, setProgram] = useState<ProgramKind | 'none'>('equipment');
   const [kp, setKp] = useState(false);
-  const onlyBw = equipment.owned.length === 0;
+  const onlyBw = equipment.owned.every((e) => e === 'pull_up_bar');
 
   const saveEquipment = async () => {
     await act(db.setEquipment(equipment.owned, equipment.caps));
