@@ -207,6 +207,15 @@ describe('workout loop', () => {
     expect(asLb(api.getWorkout(wid).exercises[0].sets[1].weight_kg)).toBe(45);
   });
 
+  it('workoutsBetween finds completed workouts in a time range', () => {
+    const wid = api.startWorkout({ routineId });
+    doSets(wid, 'Incline DB Press', [10, 10, 10], 45);
+    api.finishWorkout(wid);
+    const day = 86400000;
+    expect(api.workoutsBetween(new Date(Date.now() - day).toISOString(), new Date(Date.now() + day).toISOString()).map((w) => w.id)).toEqual([wid]);
+    expect(api.workoutsBetween(new Date(Date.now() + day).toISOString(), new Date(Date.now() + 2 * day).toISOString())).toEqual([]);
+  });
+
   it('finishing with nothing completed is refused', () => {
     const a = api.startWorkout({ routineId });
     expect(() => api.finishWorkout(a)).toThrow(/No sets/);

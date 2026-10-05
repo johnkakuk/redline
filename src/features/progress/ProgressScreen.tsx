@@ -12,6 +12,7 @@ import { BarChart, CalendarHeatmap, HBars } from '../../ui/charts';
 import { Term } from '../../ui/InfoTip';
 import { Card, Chip, EmptyState, ListRow, Segmented } from '../../ui/primitives';
 import { Screen } from '../../ui/Screen';
+import { useOpenDay } from '../workout/useOpenDay';
 import { StrengthPanel } from './StrengthPanel';
 
 type Tab = 'strength' | 'volume' | 'consistency';
@@ -133,6 +134,7 @@ function Consistency() {
   const c = useQuery({ queryKey: ['consistency'], queryFn: () => db.consistency() }).data;
   const trend = useQuery({ queryKey: ['weeklyTrend', 12], queryFn: () => db.weeklyTrend(12) }).data ?? [];
   const history = useQuery({ queryKey: ['workouts'], queryFn: () => db.listWorkouts({ limit: 30 }) }).data ?? [];
+  const day = useOpenDay();
   if (!c) return null;
   return (
     <>
@@ -144,7 +146,8 @@ function Consistency() {
       <div className="caption" style={{ marginTop: 8 }}>A streak week has {c.weekly_target}+ sessions. Change the target in Settings.</div>
 
       <Card className="section" label="Last 12 months" action={<span className="caption">{c.total_sessions} {c.total_sessions === 1 ? 'session' : 'sessions'}</span>}>
-        <CalendarHeatmap days={c.days} level={(n) => (n === 0 ? 0 : Math.min(4, n + 2))} />
+        <CalendarHeatmap days={c.days} level={(n) => (n === 0 ? 0 : Math.min(4, n + 2))} onSelect={(d) => void day.open(d)} />
+        {day.sheet}
         <div className="heat-legend" style={{ marginTop: 8, justifyContent: 'flex-end' }}>
           Less <i className="heat-0" /><i className="heat-1" /><i className="heat-2" /><i className="heat-3" /><i className="heat-4" /> More
         </div>

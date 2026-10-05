@@ -147,7 +147,9 @@ export function HBars({ rows, band, max: maxIn }: { rows: { label: string; value
 }
 
 /** Calendar heatmap: columns are weeks (Mon–Sun), most recent on the right. */
-export function CalendarHeatmap({ days, weeks = 53, level }: { days: Record<string, number>; weeks?: number; level?: (n: number) => number }) {
+export function CalendarHeatmap({ days, weeks = 53, level, onSelect }: {
+  days: Record<string, number>; weeks?: number; level?: (n: number) => number; onSelect?: (date: string) => void;
+}) {
   const ref = useRef<HTMLDivElement>(null);
   const cells = useMemo(() => {
     const today = new Date();
@@ -164,8 +166,12 @@ export function CalendarHeatmap({ days, weeks = 53, level }: { days: Record<stri
   useEffect(() => { if (ref.current) ref.current.scrollLeft = ref.current.scrollWidth; }, [cells]);
   const lv = level ?? ((n: number) => Math.min(4, n === 0 ? 0 : n + 1));
   return (
-    <div className="heatmap" ref={ref} role="img" aria-label="Training calendar">
-      {cells.map((c) => <i key={c.key} className={`heat-${lv(c.n)}`} style={c.future ? { opacity: 0 } : undefined} title={`${c.key}: ${c.n}`} />)}
+    <div className="heatmap" ref={ref} role={onSelect ? undefined : 'img'} aria-label="Training calendar"
+      onClick={(e) => { const k = (e.target as HTMLElement).dataset.day; if (k && onSelect) onSelect(k); }}>
+      {cells.map((c) => (
+        <i key={c.key} className={`heat-${lv(c.n)} ${c.n > 0 && onSelect ? 'has' : ''}`} style={c.future ? { opacity: 0 } : undefined} title={`${c.key}: ${c.n}`}
+          {...(c.n > 0 && onSelect ? { 'data-day': c.key, role: 'button', 'aria-label': `${c.key}: ${c.n} workout${c.n > 1 ? 's' : ''}` } : {})} />
+      ))}
     </div>
   );
 }

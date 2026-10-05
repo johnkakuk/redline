@@ -77,6 +77,13 @@ test('core loop: routine → workout → finish → next session progresses and 
   await expect(page.getByText('Hit 12/12/12 → +5 lb next time')).toBeVisible();
   await page.getByRole('button', { name: 'Done' }).click();
 
+  // Trained days on the week strip open that day's workout; other days aren't buttons.
+  await expect(page.locator('.week button.day')).toHaveCount(1);
+  await page.getByRole('button', { name: /trained, view workout/ }).click();
+  await expect(page).toHaveURL(/#\/history\//);
+  await expect(page.getByRole('heading', { name: 'Push A' })).toBeVisible();
+  await page.goBack();
+
   // Session 2: pre-filled at 50 lb, which is the cap.
   await page.getByRole('button', { name: 'Start workout' }).click();
   const w1 = page.getByRole('button', { name: 'Set 1 weight' });

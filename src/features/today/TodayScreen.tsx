@@ -13,6 +13,7 @@ import { Term } from '../../ui/InfoTip';
 import { Screen } from '../../ui/Screen';
 import { toast } from '../../ui/toast';
 import { StarterProgramSheet } from '../onboarding/equipment';
+import { useOpenDay } from '../workout/useOpenDay';
 
 const DOW = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
 
@@ -30,6 +31,7 @@ export function TodayScreen() {
   const nutrition = useQuery({ queryKey: ['nutrition', today], queryFn: () => db.getNutrition(today) }).data;
   const [log, setLog] = useState<null | 'bw' | 'cal' | 'protein'>(null);
   const [starter, setStarter] = useState(false);
+  const day = useOpenDay();
 
   const start = async (routineId: string | null) => {
     const id = await act(db.startWorkout({ routineId }));
@@ -48,9 +50,16 @@ export function TodayScreen() {
       <div className="week" aria-label="This week">
         {DOW.map((d, i) => {
           const date = localDate(addDays(monday, i));
-          return <div key={i} className={`day ${trained.has(date) ? 'done' : ''} ${date === today ? 'today' : ''}`}><i>{d}</i></div>;
+          const done = trained.has(date);
+          const cls = `day ${done ? 'done' : ''} ${date === today ? 'today' : ''}`;
+          const label = fmtDay(date, { weekday: 'long' });
+          // Only days with a workout are tappable; the rest are plain status.
+          return done
+            ? <button key={i} type="button" className={cls} onClick={() => void day.open(date)} aria-label={`${label}: trained, view workout`}><span>{d}</span><i /></button>
+            : <div key={i} className={cls} aria-label={`${label}: ${date === today ? 'today' : 'no workout'}`}><span>{d}</span><i /></div>;
         })}
       </div>
+      {day.sheet}
 
       <div className="section">
         {activeId ? (

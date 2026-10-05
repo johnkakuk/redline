@@ -464,6 +464,15 @@ export interface WorkoutListRow {
   kcal_estimate: number | null; exercises: string;
 }
 
+/** Completed workouts that started in [fromIso, toIso). The UI passes local-day bounds. */
+export function workoutsBetween(db: Db, fromIso: string, toIso: string): { id: string; name: string; started_at: string }[] {
+  return db.all(
+    `SELECT id, name, started_at FROM workouts
+     WHERE status = 'completed' AND deleted_at IS NULL AND started_at >= ? AND started_at < ? ORDER BY started_at`,
+    [fromIso, toIso],
+  );
+}
+
 export function listWorkouts(db: Db, opts: { limit?: number; exerciseId?: string } = {}): WorkoutListRow[] {
   return db.all<WorkoutListRow>(
     `SELECT w.id, w.name, w.started_at, w.active_duration_sec, w.kcal_estimate,
