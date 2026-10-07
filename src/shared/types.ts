@@ -193,7 +193,7 @@ export interface WorkoutSummary {
   workout: Workout;
   working_sets: number;
   tonnage_kg: number;
-  prs: (PrHit & { exercise_name: string })[];
+  prs: (PrHit & { exercise_name: string; load_type: LoadType })[];
   changes: ProgressionChange[];
   added_exercises: { id: string; name: string }[];
   calorie_profile_complete: boolean;

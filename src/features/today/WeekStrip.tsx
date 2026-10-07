@@ -50,10 +50,11 @@ export function WeekStrip({ trained, onOpenDay }: { trained: Set<string>; onOpen
           const done = trained.has(date);
           const cls = `day ${done ? 'done' : ''} ${date === today ? 'today' : ''}`;
           const label = fmtDay(date, { weekday: 'long', month: 'short', day: 'numeric' });
-          // Only days with a workout are tappable; the rest are plain status.
-          return done
-            ? <button key={i} type="button" className={cls} tabIndex={page === offset ? 0 : -1} onClick={() => onOpenDay(date)} aria-label={`${label}: trained, view workout`}><span>{d}</span><i /></button>
-            : <div key={i} className={cls} aria-label={`${label}: ${date === today ? 'today' : 'no workout'}`}><span>{d}</span><i /></div>;
+          // Every day up to today opens its Day screen; future days are plain status.
+          return date <= today
+            ? <button key={i} type="button" className={cls} tabIndex={page === offset ? 0 : -1} onClick={() => onOpenDay(date)}
+                aria-label={`${label}${date === today ? ' (today)' : ''}: ${done ? 'trained' : 'no workout'}. Open day`}><span>{d}</span><i /></button>
+            : <div key={i} className={cls} aria-label={`${label}: upcoming`}><span>{d}</span><i /></div>;
         })}
       </div>
     );

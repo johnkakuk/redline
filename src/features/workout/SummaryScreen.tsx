@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { act, useUnits } from '../../app/queries';
 import { db } from '../../db/client';
-import { PR_LABEL } from '../../engine/prs';
+import { fmtVolume, PR_LABEL } from '../../engine/prs';
 import { fmtDay, fmtMinutes, localDate } from '../../shared/time';
 import type { ProgressionChange } from '../../shared/types';
 import { fmtCompact } from '../../shared/units';
@@ -34,7 +34,7 @@ function ChangeBadge({ c, w }: { c: ProgressionChange; w: (kg: number | null | u
 export function SummaryScreen({ history }: { history?: boolean }) {
   const { id } = useParams();
   const nav = useNavigate();
-  const { w, units } = useUnits();
+  const { w, units, toDisplay } = useUnits();
   const [confirmDelete, setConfirmDelete] = useState(false);
   const { data: s } = useQuery({ queryKey: ['summary', id], queryFn: () => db.getSummary(id!) });
   const { data: full } = useQuery({ queryKey: ['workout', id], queryFn: () => db.getWorkout(id!), enabled: !!history });
@@ -73,7 +73,7 @@ export function SummaryScreen({ history }: { history?: boolean }) {
               <div className="row-between" key={i}>
                 <span className="callout">{p.exercise_name} <span className="caption">· {PR_LABEL[p.type]}</span></span>
                 <span className="num" style={{ fontSize: 20, color: 'var(--pr)' }}>
-                  {p.type === 'session_volume' ? `${fmtCompact(Number(w(p.value)))} ${units}` : p.type === 'best_e1rm' ? `${w(p.value)} e1RM` : p.weight_kg != null ? `${w(p.weight_kg)} × ${p.reps}` : `${p.reps} reps`}
+                  {fmtVolume(p.value, p.load_type, (kg) => toDisplay(kg) ?? 0, units)}
                 </span>
               </div>
             ))}

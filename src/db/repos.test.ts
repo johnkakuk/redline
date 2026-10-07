@@ -36,7 +36,7 @@ beforeEach(() => {
 
 describe('boot', () => {
   it('migrates, seeds ~100 exercises with linked variation chains', () => {
-    expect(api.boot().schemaVersion).toBe(5);
+    expect(api.boot().schemaVersion).toBe(6);
     expect(api.listExercises().length).toBeGreaterThan(80);
     const push = ex('Push-up');
     expect(push.harder_variation_id).toBe(ex('Decline Push-up').id);
@@ -219,18 +219,18 @@ describe('workout loop', () => {
     expect(api.getSummary(wid).changes[0].undone).toBe(true);
   });
 
-  it('live PRs after the first session; materialized on finish', () => {
+  it('volume PR: the set that beats the best previous session gets the badge; recorded on finish', () => {
     let wid = api.startWorkout({ routineId });
-    doSets(wid, 'Incline DB Press', [10, 10, 10], 40);
+    doSets(wid, 'Incline DB Press', [10, 10, 10], 40); // 3 × 40 × 10 × 2 hands = 2400 lb
     api.finishWorkout(wid);
     wid = api.startWorkout({ routineId });
-    const we = api.getWorkout(wid).exercises[0];
-    const first = we.sets.find((s) => s.kind === 'working')!;
-    const { prs } = api.completeSet(first.id, { weight_kg: lb(45), reps: 10 });
-    expect(prs.map((p) => p.type)).toEqual(['max_weight']);
+    const sets = api.getWorkout(wid).exercises[0].sets.filter((s) => s.kind === 'working');
+    const done = sets.map((s) => api.completeSet(s.id, { weight_kg: lb(45), reps: 10 }).prs.map((p) => p.type));
+    // 900, 1800, then 2700 crosses 2400 on the third set only.
+    expect(done).toEqual([[], [], ['session_volume']]);
     const sum = api.finishWorkout(wid);
-    expect(sum.prs.map((p) => p.type).sort()).toEqual(['best_e1rm', 'max_weight']);
-    expect(api.recentPrs({}).length).toBeGreaterThan(0);
+    expect(sum.prs.map((p) => [p.type, asLb(p.value)])).toEqual([['session_volume', 2700]]);
+    expect(api.recentPrs({}).map((p) => p.type)).toEqual(['session_volume']);
   });
 
   it('only one active workout; discard; resume', () => {
@@ -490,7 +490,8 @@ describe('analytics', () => {
     expect(c.current_streak).toBe(1);
     expect(api.exerciseHistory(ex('DB Bench Press').id)).toHaveLength(3);
     const d = api.exerciseDetail(ex('DB Bench Press').id);
-    expect(asLb(d.bests.max_weight?.value)).toBe(50);
+    expect(asLb(d.bests.session_volume?.value)).toBe(3000); // 50 lb × 10 × 3 sets × 2 hands
+    expect(d.bests.max_weight).toBeUndefined();
     expect(d.routines).toHaveLength(1);
     expect(api.listWorkouts()).toHaveLength(3);
   });

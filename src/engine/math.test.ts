@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { lbToKg } from '../shared/units';
 import { activeSeconds, correctedMet, estimateKcal, MET, mifflinStJeor } from './calories';
 import { e1rm } from './e1rm';
-import { computePrEvents, detectSetPrs } from './prs';
+import { computePrEvents, detectVolumePr, sessionVolume } from './prs';
 import { setsPerMuscle, setTonnage } from './volume';
 import { warmupSets } from './warmups';
 
@@ -70,28 +70,39 @@ describe('warm-ups', () => {
   });
 });
 
-describe('PRs', () => {
+describe('PRs (session volume only)', () => {
   const set = (id: string, wid: string, w: number, r: number, at: string) =>
     ({ set_id: id, workout_id: wid, weight_kg: w, reps: r, completed_at: at });
 
-  it('first session is baseline; later improvements are events', () => {
+  it('first session is the baseline; only sessions beating the best volume are records', () => {
     const ev = computePrEvents([
-      set('a', 'w1', 50, 10, '2026-01-01T10:00:00Z'),
+      set('a', 'w1', 50, 10, '2026-01-01T10:00:00Z'), // w1: 500 + 450 = 950
       set('b', 'w1', 50, 9, '2026-01-01T10:05:00Z'),
-      set('c', 'w2', 50, 12, '2026-01-08T10:00:00Z'),
-      set('d', 'w2', 55, 8, '2026-01-08T10:05:00Z'),
+      set('c', 'w2', 50, 8, '2026-01-08T10:00:00Z'), // w2: 400 + 400 = 800 (no record)
+      set('d', 'w2', 50, 8, '2026-01-08T10:05:00Z'),
+      set('e', 'w3', 55, 9, '2026-01-15T10:00:00Z'), // w3: 495 + 495 = 990 (record)
+      set('f', 'w3', 55, 9, '2026-01-15T10:05:00Z'),
     ], 'total');
-    const nonBase = ev.filter((e) => !e.baseline).map((e) => `${e.type}:${e.set_id ?? e.workout_id}`);
-    expect(nonBase).toEqual(['best_e1rm:c', 'reps_at_weight:c', 'max_weight:d', 'session_volume:w2']);
-    expect(ev.filter((e) => e.baseline).map((e) => e.type)).toContain('max_weight');
+    expect(ev.map((e) => [e.type, e.workout_id, e.value, e.baseline])).toEqual([
+      ['session_volume', 'w1', 950, true],
+      ['session_volume', 'w3', 990, false],
+    ]);
   });
 
-  it('live detection: none on first session, then heaviest / e1RM / rep PR', () => {
-    expect(detectSetPrs({ weight_kg: 50, reps: 10 }, [], 'total')).toEqual([]);
-    const hist = [{ weight_kg: 50, reps: 10 }];
-    expect(detectSetPrs({ weight_kg: 55, reps: 5 }, hist, 'total').map((h) => h.type)).toEqual(['max_weight']);
-    expect(detectSetPrs({ weight_kg: 50, reps: 11 }, hist, 'total').map((h) => h.type)).toEqual(['best_e1rm']);
-    expect(detectSetPrs({ weight_kg: 50, reps: 10 }, hist, 'total')).toEqual([]);
-    expect(detectSetPrs({ weight_kg: null, reps: 12 }, [{ weight_kg: null, reps: 10 }], 'bodyweight').map((h) => h.type)).toEqual(['reps_at_weight']);
+  it('per-hand volume counts both dumbbells; bodyweight counts reps', () => {
+    expect(sessionVolume([{ weight_kg: 20, reps: 10 }], 'per_hand')).toBe(400);
+    expect(sessionVolume([{ weight_kg: null, reps: 12 }, { weight_kg: null, reps: 10 }], 'bodyweight')).toBe(22);
+  });
+
+  it('live: badge on the set that pushes the session past the previous best, once', () => {
+    // Previous best session: 950. Set 1 brings 500 (no), set 2 crosses to 1000 (PR), set 3 is already past (no repeat).
+    expect(detectVolumePr({ weight_kg: 50, reps: 10 }, [], 950, 'total')).toEqual([]);
+    expect(detectVolumePr({ weight_kg: 50, reps: 10 }, [{ weight_kg: 50, reps: 10 }], 950, 'total'))
+      .toEqual([{ type: 'session_volume', value: 1000, weight_kg: null, reps: null }]);
+    expect(detectVolumePr({ weight_kg: 50, reps: 10 }, [{ weight_kg: 50, reps: 10 }, { weight_kg: 50, reps: 10 }], 950, 'total')).toEqual([]);
+  });
+
+  it('live: no badge during an exercise\'s first session', () => {
+    expect(detectVolumePr({ weight_kg: 50, reps: 10 }, [], 0, 'total')).toEqual([]);
   });
 });

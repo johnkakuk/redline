@@ -155,7 +155,7 @@ export function strengthSeries(db: Db, exerciseId: string, sinceIso?: string): {
   const prWorkouts = new Set(
     db.all<{ workout_id: string }>(
       `SELECT workout_id FROM personal_records WHERE exercise_id = ? AND baseline = 0 AND type = ?`,
-      [exerciseId, metric === 'e1rm' ? 'best_e1rm' : 'reps_at_weight'],
+      [exerciseId, 'session_volume'],
     ).map((r) => r.workout_id),
   );
   const points: SeriesPoint[] = [];

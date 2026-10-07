@@ -4,7 +4,8 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { act, useSettings, useUnits } from '../../app/queries';
 import { db } from '../../db/client';
 import { EQUIPMENT_LABEL, LOAD_TYPE_LABEL, MUSCLE_LABEL } from '../../shared/labels';
-import { fmtCompact } from '../../shared/units';
+import { fmtDay } from '../../shared/time';
+import { fmtVolume } from '../../engine/prs';
 import { Badge, Button, ListRow, StatusBadge } from '../../ui/primitives';
 import { PushScreen } from '../../ui/Screen';
 import { StrengthPanel } from '../progress/StrengthPanel';
@@ -35,11 +36,10 @@ export function ExerciseDetailScreen() {
       </div>
       {ex.notes && <p className="callout muted" style={{ marginTop: 12 }}>{ex.notes}</p>}
 
-      {!bw && (d.bests.max_weight || d.bests.best_e1rm) && (
-        <div className="stats section">
-          <div className="stat"><span className="micro">Heaviest</span><span className="num">{w(d.bests.max_weight?.value)}</span></div>
-          <div className="stat"><span className="micro">Best e1RM</span><span className="num">{w(d.bests.best_e1rm?.value)}</span></div>
-          <div className="stat"><span className="micro">Best volume</span><span className="num">{d.bests.session_volume ? fmtCompact(toDisplay(d.bests.session_volume.value) ?? 0) : '—'}</span></div>
+      {d.bests.session_volume && (
+        <div className="stats two section">
+          <div className="stat"><span className="micro">Best session volume</span><span className="num">{fmtVolume(d.bests.session_volume.value, ex.load_type, (kg) => toDisplay(kg) ?? 0, units)}</span></div>
+          <div className="stat"><span className="micro">Set</span><span className="num" style={{ fontSize: 22 }}>{fmtDay(d.bests.session_volume.achieved_at, { month: 'short', day: 'numeric', year: 'numeric' })}</span></div>
         </div>
       )}
 

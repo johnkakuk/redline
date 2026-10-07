@@ -5,6 +5,7 @@ import { BrowserRouter, Navigate, NavLink, Outlet, Route, Routes, useLocation, u
 import { db } from '../db/client';
 import { LoginScreen } from '../features/account/LoginScreen';
 import { BodyScreen } from '../features/body/BodyScreen';
+import { DayScreen } from '../features/day/DayScreen';
 import { ExerciseDetailScreen } from '../features/exercises/ExerciseDetail';
 import { ExerciseFormScreen } from '../features/exercises/ExerciseForm';
 import { Onboarding } from '../features/onboarding/Onboarding';
@@ -120,6 +121,7 @@ export function App() {
             <Route path="/exercises/:id/edit" element={<ExerciseFormScreen />} />
             <Route path="/progress" element={<ProgressScreen />} />
             <Route path="/history/:id" element={<SummaryScreen history />} />
+            <Route path="/day/:date" element={<DayScreen />} />
             <Route path="/body" element={<BodyScreen />} />
             <Route path="/settings" element={<SettingsScreen />} />
             <Route path="*" element={<Navigate to="/" replace />} />

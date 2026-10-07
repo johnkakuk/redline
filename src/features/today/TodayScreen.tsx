@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { act, useActiveWorkoutId, useSettings, useUnits } from '../../app/queries';
 import { db } from '../../db/client';
-import { PR_LABEL } from '../../engine/prs';
+import { fmtVolume, PR_LABEL } from '../../engine/prs';
 import { addDays, fmtDay, localDate } from '../../shared/time';
 import { fmtCompact } from '../../shared/units';
 import { KeypadSheet } from '../../ui/Keypad';
@@ -46,7 +46,6 @@ export function TodayScreen() {
   return (
     <Screen title="Today" eyebrow={fmtDay(new Date().toISOString(), { weekday: 'long', month: 'short', day: 'numeric' })}>
       <WeekStrip trained={trained} onOpenDay={(d) => void day.open(d)} />
-      {day.sheet}
 
       <div className="section">
         {activeId ? (
@@ -111,7 +110,7 @@ export function TodayScreen() {
             {prs.map((p, i) => (
               <ListRow key={i} title={p.exercise_name} sub={`${PR_LABEL[p.type]} · ${fmtDay(p.achieved_at, { weekday: 'short' })}`} onClick={() => nav(`/exercises/${p.exercise_id}`)}
                 value={<span className="num" style={{ fontSize: 20, color: 'var(--pr)' }}>
-                  {p.type === 'session_volume' ? fmtCompact(toDisplay(p.value) ?? 0) : p.type === 'best_e1rm' ? w(p.value) : p.weight_kg != null ? `${w(p.weight_kg)}×${p.reps}` : `${p.reps}`}
+                  {fmtVolume(p.value, p.load_type, (kg) => toDisplay(kg) ?? 0, units)}
                 </span>} />
             ))}
           </div>

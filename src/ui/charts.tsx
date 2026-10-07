@@ -169,8 +169,9 @@ export function CalendarHeatmap({ days, weeks = 53, level, onSelect }: {
     <div className="heatmap" ref={ref} role={onSelect ? undefined : 'img'} aria-label="Training calendar"
       onClick={(e) => { const k = (e.target as HTMLElement).dataset.day; if (k && onSelect) onSelect(k); }}>
       {cells.map((c) => (
-        <i key={c.key} className={`heat-${lv(c.n)} ${c.n > 0 && onSelect ? 'has' : ''}`} style={c.future ? { opacity: 0 } : undefined} title={`${c.key}: ${c.n}`}
-          {...(c.n > 0 && onSelect ? { 'data-day': c.key, role: 'button', 'aria-label': `${c.key}: ${c.n} workout${c.n > 1 ? 's' : ''}` } : {})} />
+        <i key={c.key} className={`heat-${lv(c.n)} ${!c.future && onSelect ? 'has' : ''}`} style={c.future ? { opacity: 0 } : undefined} title={`${c.key}: ${c.n}`}
+          {...(!c.future && onSelect ? { 'data-day': c.key } : {})}
+          {...(c.n > 0 && onSelect ? { role: 'button', 'aria-label': `${c.key}: ${c.n} workout${c.n > 1 ? 's' : ''}` } : {})} />
       ))}
     </div>
   );

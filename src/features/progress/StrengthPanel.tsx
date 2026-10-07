@@ -2,7 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
 import { useUnits } from '../../app/queries';
 import { db } from '../../db/client';
-import { PR_LABEL } from '../../engine/prs';
+import { fmtVolume, PR_LABEL } from '../../engine/prs';
 import { addDays, fmtDay } from '../../shared/time';
 import { fmtCompact } from '../../shared/units';
 import { LineChart } from '../../ui/charts';
@@ -83,7 +83,7 @@ export function StrengthPanel({ exerciseId }: { exerciseId: string }) {
               <div className="list-row" key={i}>
                 <div className="lr-main"><div className="lr-title">{PR_LABEL[p.type]}</div><div className="lr-sub">{fmtDay(p.achieved_at, { month: 'short', day: 'numeric', year: 'numeric' })}</div></div>
                 <div className="lr-value"><span className="num" style={{ fontSize: 20, color: 'var(--pr)' }}>
-                  {p.type === 'session_volume' ? `${fmtCompact(toDisplay(p.value) ?? 0)}` : p.type === 'best_e1rm' ? w(p.value) : p.weight_kg != null ? `${w(p.weight_kg)}×${p.reps}` : `${p.reps}`}
+                  {fmtVolume(p.value, p.load_type, (kg) => toDisplay(kg) ?? 0, units)}
                 </span></div>
               </div>
             ))}

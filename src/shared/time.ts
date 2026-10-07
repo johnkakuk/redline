@@ -65,3 +65,14 @@ export function ageFrom(birthDate: string, at = new Date()): number {
   if (at.getMonth() < b.getMonth() || (at.getMonth() === b.getMonth() && at.getDate() < b.getDate())) age--;
   return age;
 }
+
+/** "3 sets · 42m · 7.9k lb": skips a zero duration or zero tonnage (e.g. a bodyweight-only workout). */
+export function workoutMeta(x: { sets: number; active_duration_sec: number | null; tonnage_kg: number }, toDisplay: (kg: number) => number, units: string): string {
+  const parts = [`${x.sets} ${x.sets === 1 ? 'set' : 'sets'}`];
+  if ((x.active_duration_sec ?? 0) >= 60) parts.push(fmtMinutes(x.active_duration_sec!));
+  if (x.tonnage_kg > 0) {
+    const v = toDisplay(x.tonnage_kg);
+    parts.push(`${v >= 10000 ? `${Math.round(v / 1000)}k` : v >= 1000 ? `${(v / 1000).toFixed(1)}k` : Math.round(v)} ${units}`);
+  }
+  return parts.join(' · ');
+}

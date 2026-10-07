@@ -92,11 +92,13 @@ test('core loop: routine → workout → finish → next session progresses and 
   await expect(page.getByText('Hit 10/10/10 → +5 lb next time')).toBeVisible(); // 50×9 wouldn't beat 45×10, so reps stay
   await page.getByRole('button', { name: 'Done' }).click();
 
-  // Trained days on the week strip open that day's workout; other days aren't buttons.
-  await expect(page.locator('.week button.day')).toHaveCount(1);
-  await page.getByRole('button', { name: /trained, view workout/ }).click();
+  // Tapping today on the week strip opens the Day screen, which lists the workout.
+  await page.getByRole('button', { name: /\(today\): trained/ }).click();
+  await expect(page).toHaveURL(/\/day\/\d{4}-\d{2}-\d{2}$/);
+  await page.getByRole('button', { name: /^Push A/ }).click();
   await expect(page).toHaveURL(/\/history\//);
   await expect(page.getByRole('heading', { name: 'Push A' })).toBeVisible();
+  await page.goBack();
   await page.goBack();
 
   // Session 2: pre-filled at 50 lb × 10, which is the cap.
@@ -285,11 +287,11 @@ test('Today week strip: swipe back one week only, today stays marked, snaps back
 
   await expect(strip).toHaveAttribute('aria-label', /^This week/);
   // A swipe that starts on today's (tappable) dot moves the strip and does not open the workout.
-  const todayDot = page.getByRole('button', { name: /trained, view workout/ });
+  const todayDot = page.getByRole('button', { name: /\(today\)/ });
   const dotBox = (await todayDot.boundingBox())!;
   await swipe(150, dotBox.x + dotBox.width / 2);
   await expect(strip).toHaveAttribute('aria-label', /^Last week/);
-  await expect(page).not.toHaveURL(/history/);
+  await expect(page).not.toHaveURL(/\/day\//);
   await expect(page.locator('.day.today')).toHaveCount(1); // only today is ever marked
 
   await swipe(150); // nothing before last week
@@ -340,4 +342,67 @@ test('workout cards: Start opens the first exercise, per-set remove, collapse ar
   await expect(page.getByText('Remove this logged set?')).toBeVisible();
   await page.locator('.sheet').getByRole('button', { name: 'Cancel' }).click();
   await expect(first.locator('.set-row')).toHaveCount(2);
+});
+
+test('Day screen: log nutrition and bodyweight for a past day', async ({ page }) => {
+  await onboard(page);
+  // Swipe the strip back to last week and open its Monday.
+  const strip = page.locator('.week-viewport');
+  const box = (await strip.boundingBox())!;
+  await page.mouse.move(box.x + 60, box.y + box.height / 2);
+  await page.mouse.down();
+  for (let i = 1; i <= 6; i++) await page.mouse.move(box.x + 60 + i * 30, box.y + box.height / 2);
+  await page.mouse.up();
+  await expect(strip).toHaveAttribute('aria-label', /^Last week/);
+  await page.getByRole('button', { name: /^Monday, .*no workout\. Open day/ }).first().click();
+  await expect(page).toHaveURL(/\/day\//);
+  await expect(page.getByText('Rest day. No workout logged.')).toBeVisible();
+
+  await page.getByRole('button', { name: 'Calories' }).click();
+  await keys(page, '2400');
+  await sheet(page).getByRole('button', { name: 'Done' }).click();
+  await page.getByRole('button', { name: 'Protein' }).click();
+  await keys(page, '180');
+  await sheet(page).getByRole('button', { name: 'Done' }).click();
+  await page.getByRole('button', { name: 'Bodyweight' }).click();
+  await keys(page, '182.5');
+  await sheet(page).getByRole('button', { name: 'Done' }).click();
+  await expect(page.getByRole('button', { name: 'Calories' })).toContainText('2400');
+  await expect(page.getByRole('button', { name: 'Protein' })).toContainText('180');
+  await expect(page.getByRole('button', { name: 'Bodyweight' })).toContainText('182.5');
+
+  // It's that day's data, not today's.
+  await page.getByRole('button', { name: 'Back' }).click();
+  await expect(page.locator('.quick').getByText('2400')).toHaveCount(0);
+  // Clearing a value removes it.
+  await page.goForward();
+  await expect(page).toHaveURL(/\/day\//);
+  await page.getByRole('button', { name: 'Calories' }).click();
+  await page.getByRole('button', { name: 'Delete' }).click();
+  await page.getByRole('button', { name: 'Delete' }).click();
+  await page.getByRole('button', { name: 'Delete' }).click();
+  await page.getByRole('button', { name: 'Delete' }).click();
+  await sheet(page).getByRole('button', { name: 'Done' }).click();
+  await expect(page.getByRole('button', { name: 'Calories' })).not.toContainText('2400');
+});
+
+test('rest timer keeps counting in red after it runs out', async ({ page }) => {
+  await page.clock.install();
+  await onboard(page, undefined, 'Bodyweight');
+  await page.getByRole('button', { name: 'Start workout' }).click();
+  await startIfNeeded(page);
+  await page.getByRole('button', { name: 'Start set' }).first().click();
+  await page.getByRole('button', { name: 'Finish set' }).click();
+  const bar = page.locator('.rest-bar');
+  await expect(bar).toBeVisible();
+  await expect(bar).not.toHaveClass(/over/);
+  await page.clock.fastForward('05:00'); // well past any rest time
+  await expect(bar).toHaveClass(/over/);
+  await expect(bar).toContainText('Over rest');
+  await expect(bar.locator('.num')).toHaveText(/^\+\d+:\d{2}$/);
+  // Still there a while later (no auto-dismiss), until the next set starts.
+  await page.clock.fastForward('01:00');
+  await expect(bar).toBeVisible();
+  await page.getByRole('button', { name: 'Start set' }).first().click();
+  await expect(bar).toHaveCount(0);
 });

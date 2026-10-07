@@ -4,6 +4,7 @@ import m002 from './migrations/002_equipment.sql?raw';
 import m003 from './migrations/003_sync_state.sql?raw';
 import m004 from './migrations/004_pull_up_bar.sql?raw';
 import m005 from './migrations/005_single_rep_target.sql?raw';
+import m006 from './migrations/006_volume_prs_only.sql?raw';
 
 /** Ordered migrations. Append only; never edit a shipped migration. */
 export const MIGRATIONS: { version: number; sql: string }[] = [
@@ -12,6 +13,7 @@ export const MIGRATIONS: { version: number; sql: string }[] = [
   { version: 3, sql: m003 },
   { version: 4, sql: m004 },
   { version: 5, sql: m005 },
+  { version: 6, sql: m006 },
 ];
 
 /** Tables that carry updated_at and get an auto-touch trigger. */

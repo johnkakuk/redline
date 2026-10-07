@@ -6,7 +6,7 @@ import { useUnits } from '../../app/queries';
 import { db } from '../../db/client';
 import { VOLUME_BAND } from '../../engine/volume';
 import { MUSCLE_LABEL } from '../../shared/labels';
-import { addDays, fmtDay, fmtMinutes, localDate, parseLocalDate, startOfWeek } from '../../shared/time';
+import { addDays, fmtDay, fmtMinutes, localDate, parseLocalDate, startOfWeek, workoutMeta } from '../../shared/time';
 import { fmtCompact } from '../../shared/units';
 import { BarChart, CalendarHeatmap, HBars } from '../../ui/charts';
 import { Term } from '../../ui/InfoTip';
@@ -130,7 +130,7 @@ function Volume() {
 
 function Consistency() {
   const nav = useNavigate();
-  const { toDisplay } = useUnits();
+  const { units, toDisplay } = useUnits();
   const c = useQuery({ queryKey: ['consistency'], queryFn: () => db.consistency() }).data;
   const trend = useQuery({ queryKey: ['weeklyTrend', 12], queryFn: () => db.weeklyTrend(12) }).data ?? [];
   const history = useQuery({ queryKey: ['workouts'], queryFn: () => db.listWorkouts({ limit: 30 }) }).data ?? [];
@@ -147,7 +147,6 @@ function Consistency() {
 
       <Card className="section" label="Last 12 months" action={<span className="caption">{c.total_sessions} {c.total_sessions === 1 ? 'session' : 'sessions'}</span>}>
         <CalendarHeatmap days={c.days} level={(n) => (n === 0 ? 0 : Math.min(4, n + 2))} onSelect={(d) => void day.open(d)} />
-        {day.sheet}
         <div className="heat-legend" style={{ marginTop: 8, justifyContent: 'flex-end' }}>
           Less <i className="heat-0" /><i className="heat-1" /><i className="heat-2" /><i className="heat-3" /><i className="heat-4" /> More
         </div>
@@ -163,7 +162,7 @@ function Consistency() {
           <div className="list">
             {history.map((h) => (
               <ListRow key={h.id} title={h.name} onClick={() => nav(`/history/${h.id}`)}
-                sub={`${fmtDay(h.started_at, { weekday: 'short', month: 'short', day: 'numeric' })} · ${h.sets} sets · ${fmtMinutes(h.active_duration_sec ?? 0)} · ${fmtCompact(toDisplay(h.tonnage_kg) ?? 0)}`} />
+                sub={`${fmtDay(h.started_at, { weekday: 'short', month: 'short', day: 'numeric' })} · ${workoutMeta(h, (kg) => toDisplay(kg) ?? 0, units)}`} />
             ))}
           </div>
         </div>

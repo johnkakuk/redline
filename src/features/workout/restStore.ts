@@ -42,8 +42,8 @@ export const useRest = create<RestState>()(
   ),
 );
 
-/** Re-render on a tick and report remaining seconds (recomputed from endsAt every time). */
-export function useRemaining(): { remaining: number; endsAt: number | null; duration: number } {
+/** Re-render on a tick and report remaining seconds, or seconds over once rest has run out (both from endsAt). */
+export function useRemaining(): { remaining: number; over: number; endsAt: number | null; duration: number } {
   const { endsAt, duration } = useRest();
   const [, tick] = useState(0);
   useEffect(() => {
@@ -54,7 +54,8 @@ export function useRemaining(): { remaining: number; endsAt: number | null; dura
     return () => { clearInterval(id); document.removeEventListener('visibilitychange', onVis); };
   }, [endsAt]);
   const remaining = endsAt ? Math.max(0, Math.ceil((endsAt - Date.now()) / 1000)) : 0;
-  return { remaining, endsAt, duration };
+  const over = endsAt ? Math.max(0, Math.floor((Date.now() - endsAt) / 1000)) : 0;
+  return { remaining, over, endsAt, duration };
 }
 
 // ── Audio cue (no Vibration API on iOS). Unlocked on the first tap. ──

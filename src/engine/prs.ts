@@ -1,6 +1,7 @@
+// Personal records. Only one kind is tracked: best session volume per exercise
+// (tonnage for loaded exercises, total reps for bodyweight-only ones).
 import type { LoadType, PrHit, PrType } from '../shared/types';
-import { e1rm } from './e1rm';
-import { approxEq, gt } from './rounding';
+import { gt } from './rounding';
 import { setTonnage } from './volume';
 
 export interface PrSet {
@@ -19,57 +20,32 @@ export interface PrEvent extends PrHit {
   baseline: boolean;
 }
 
-const weightKey = (w: number) => (Math.round(w * 1000) / 1000).toFixed(3);
+/** One set's contribution to session volume. */
+export function setVolume(weightKg: number | null, reps: number | null, loadType: LoadType): number {
+  if (reps == null || reps <= 0) return 0;
+  return loadType === 'bodyweight' ? reps : setTonnage(weightKg ?? 0, reps, loadType);
+}
 
-/**
- * Walk an exercise's completed working sets chronologically and emit an event whenever a record improves.
- * reps_at_weight only fires when an earlier set at the same weight was beaten.
- */
+export const sessionVolume = (sets: { weight_kg: number | null; reps: number | null }[], loadType: LoadType) =>
+  sets.reduce((a, s) => a + setVolume(s.weight_kg, s.reps, loadType), 0);
+
+/** Walk an exercise's completed working sets and emit an event each time a session sets a new volume record. */
 export function computePrEvents(sets: PrSet[], loadType: LoadType): PrEvent[] {
   const sorted = [...sets].sort((a, b) => a.completed_at.localeCompare(b.completed_at));
-  const events: PrEvent[] = [];
   const firstWorkout = sorted[0]?.workout_id;
-  let maxW = -Infinity;
-  let bestE = -Infinity;
-  let bestVol = -Infinity;
-  const repsAt = new Map<string, number>();
-  const sessionVol = new Map<string, { vol: number; at: string }>();
-  const weighted = loadType !== 'bodyweight';
-
+  const sessions = new Map<string, { vol: number; at: string; lastSet: string }>();
   for (const s of sorted) {
-    if (s.reps == null || s.reps <= 0) continue;
-    const baseline = s.workout_id === firstWorkout;
-    const base = { set_id: s.set_id, workout_id: s.workout_id, achieved_at: s.completed_at, baseline };
-    const w = s.weight_kg ?? 0;
-
-    if (weighted && s.weight_kg != null && w > 0) {
-      if (gt(w, maxW)) {
-        maxW = w;
-        events.push({ ...base, type: 'max_weight', value: w, weight_kg: w, reps: s.reps });
-      }
-      const e = e1rm(w, s.reps);
-      if (e != null && gt(e, bestE)) {
-        bestE = e;
-        events.push({ ...base, type: 'best_e1rm', value: e, weight_kg: w, reps: s.reps });
-      }
-    }
-    const k = weightKey(w);
-    const prev = repsAt.get(k);
-    if (prev != null && s.reps > prev && !baseline) {
-      events.push({ ...base, type: 'reps_at_weight', value: s.reps, weight_kg: weighted ? w : null, reps: s.reps });
-    }
-    if (prev == null || s.reps > prev) repsAt.set(k, s.reps);
-
-    const sv = sessionVol.get(s.workout_id) ?? { vol: 0, at: s.completed_at };
-    sv.vol += weighted ? setTonnage(w, s.reps, loadType) : s.reps;
-    sv.at = s.completed_at;
-    sessionVol.set(s.workout_id, sv);
+    const g = sessions.get(s.workout_id) ?? { vol: 0, at: s.completed_at, lastSet: s.set_id };
+    g.vol += setVolume(s.weight_kg, s.reps, loadType);
+    g.at = s.completed_at;
+    g.lastSet = s.set_id;
+    sessions.set(s.workout_id, g);
   }
-
-  // Session volume records, in workout order.
-  for (const [workoutId, { vol, at }] of [...sessionVol.entries()].sort((a, b) => a[1].at.localeCompare(b[1].at))) {
-    if (vol > 0 && gt(vol, bestVol)) {
-      bestVol = vol;
+  const events: PrEvent[] = [];
+  let best = -Infinity;
+  for (const [workoutId, { vol, at }] of [...sessions.entries()].sort((a, b) => a[1].at.localeCompare(b[1].at))) {
+    if (vol > 0 && gt(vol, best)) {
+      best = vol;
       events.push({ set_id: null, workout_id: workoutId, achieved_at: at, baseline: workoutId === firstWorkout, type: 'session_volume', value: vol, weight_kg: null, reps: null });
     }
   }
@@ -77,37 +53,34 @@ export function computePrEvents(sets: PrSet[], loadType: LoadType): PrEvent[] {
 }
 
 /**
- * Live PR check for a just-completed set against all other completed sets for the exercise.
- * No badges for an exercise's first ever session.
+ * Live check after completing a set: did this set push the session's volume past the previous best session?
+ * Fires once per session (on the set that crosses the line). No badge during an exercise's first session.
  */
-export function detectSetPrs(
+export function detectVolumePr(
   set: { weight_kg: number | null; reps: number | null },
-  history: { weight_kg: number | null; reps: number | null }[],
+  earlierThisSession: { weight_kg: number | null; reps: number | null }[],
+  previousBest: number,
   loadType: LoadType,
 ): PrHit[] {
-  if (set.reps == null || set.reps <= 0 || history.length === 0) return [];
-  const hits: PrHit[] = [];
-  const w = set.weight_kg ?? 0;
-  const weighted = loadType !== 'bodyweight' && w > 0;
-  if (weighted) {
-    const maxW = Math.max(...history.map((h) => h.weight_kg ?? 0));
-    if (gt(w, maxW)) hits.push({ type: 'max_weight', value: w, weight_kg: w, reps: set.reps });
-    const e = e1rm(w, set.reps);
-    const bestE = Math.max(0, ...history.map((h) => (h.weight_kg && h.reps ? e1rm(h.weight_kg, h.reps) ?? 0 : 0)));
-    if (e != null && gt(e, bestE) && !hits.some((x) => x.type === 'max_weight')) {
-      hits.push({ type: 'best_e1rm', value: e, weight_kg: w, reps: set.reps });
-    }
+  if (!(previousBest > 0)) return [];
+  const before = sessionVolume(earlierThisSession, loadType);
+  const after = before + setVolume(set.weight_kg, set.reps, loadType);
+  if (gt(after, previousBest) && !gt(before, previousBest)) {
+    return [{ type: 'session_volume', value: after, weight_kg: null, reps: null }];
   }
-  const atWeight = history.filter((h) => approxEq(h.weight_kg ?? 0, w) && h.reps != null).map((h) => h.reps as number);
-  if (atWeight.length && set.reps > Math.max(...atWeight) && hits.length === 0) {
-    hits.push({ type: 'reps_at_weight', value: set.reps, weight_kg: weighted ? w : null, reps: set.reps });
-  }
-  return hits;
+  return [];
 }
 
 export const PR_LABEL: Record<PrType, string> = {
   max_weight: 'Heaviest',
   best_e1rm: 'Best e1RM',
   reps_at_weight: 'Rep PR',
-  session_volume: 'Session volume',
+  session_volume: 'Volume PR',
 };
+
+/** "2.7k lb" for loaded exercises, "22 reps" for bodyweight-only. `display` converts kg to the user's unit. */
+export function fmtVolume(value: number, loadType: LoadType, display: (kg: number) => number, units: string): string {
+  if (loadType === 'bodyweight') return `${Math.round(value)} reps`;
+  const v = display(value);
+  return `${v >= 1000 ? `${(v / 1000).toFixed(v >= 10000 ? 0 : 1)}k` : Math.round(v)} ${units}`;
+}

@@ -11,7 +11,7 @@ import { Button, EmptyState } from '../../ui/primitives';
 import { ActionSheet, ConfirmSheet, Sheet } from '../../ui/Sheet';
 import { SortableList } from '../../ui/Sortable';
 import { toast, toastError } from '../../ui/toast';
-import { PR_LABEL } from '../../engine/prs';
+import { fmtVolume, PR_LABEL } from '../../engine/prs';
 import { ExercisePicker } from '../exercises/ExercisePicker';
 import { ExerciseCard, SupersetLabel, type CardHandlers } from './ExerciseCard';
 import { blocksOf, currentStep, nextStepAfter } from './flow';
@@ -108,7 +108,7 @@ function LiveWorkout({ w }: { w: WorkoutFull }) {
       if (prs.length) {
         setPrSets((p) => new Set(p).add(s.id));
         const pr = prs[0];
-        toast(`${PR_LABEL[pr.type]} · ${we.exercise.name}${pr.weight_kg != null ? ` ${fw(pr.weight_kg)} × ${pr.reps}` : ` ${pr.reps} reps`}`, 'pr');
+        toast(`${PR_LABEL[pr.type]} · ${we.exercise.name} ${fmtVolume(pr.value, we.exercise.load_type, (kg) => toDisplay(kg) ?? 0, units)}`, 'pr');
       }
     } catch (e) {
       toastError(e);

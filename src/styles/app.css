@@ -499,3 +499,10 @@ button.day:active { background: var(--bg-2); }
 .set-clock { color: var(--red-400); font-size: 18px; }
 .start-bar { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(var(--safe-bottom) + var(--s-3)); z-index: 45; width: calc(100% - 2 * var(--gutter)); max-width: calc(560px - 2 * var(--gutter)); }
 .start-bar .btn { height: 60px; font-size: 19px; box-shadow: var(--shadow-sheet); }
+
+/* Rest overrun: unmistakably over. */
+.rest-bar.over { background: var(--red-500); border-color: var(--red-500); color: var(--text-on-red); }
+.rest-bar.over .micro { color: var(--text-on-red); }
+.rest-bar.over .btn.ghost { color: var(--text-on-red); }
+.rest-bar.over .btn.ghost:active { background: rgba(255, 255, 255, 0.15); }
+.rest-bar.over .progress { display: none; }

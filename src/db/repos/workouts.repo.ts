@@ -1,6 +1,6 @@
 import { activeSeconds, estimateKcal, profileComplete, type Profile } from '../../engine/calories';
 import { evaluate, initialState } from '../../engine/progression';
-import { detectSetPrs } from '../../engine/prs';
+import { detectVolumePr, sessionVolume } from '../../engine/prs';
 import { approxEq } from '../../engine/rounding';
 import { setTonnage } from '../../engine/volume';
 import { warmupSets } from '../../engine/warmups';
@@ -187,19 +187,20 @@ export function completeSet(db: Db, setId: string, values?: { weight_kg?: number
       ex.load_type === 'bodyweight' ? null : weight, reps, now(), setId,
     ]);
     if (s.kind !== 'working') return { prs: [] };
-    const history = db.all<{ weight_kg: number | null; reps: number | null }>(
-      `SELECT s.weight_kg, s.reps FROM sets s JOIN workout_exercises we ON we.id = s.workout_exercise_id JOIN workouts w ON w.id = we.workout_id
+    // Session volume PR: compare this session's running volume with the best previous session.
+    const rows = db.all<{ workout_id: string; weight_kg: number | null; reps: number | null }>(
+      `SELECT w.id AS workout_id, s.weight_kg, s.reps FROM sets s JOIN workout_exercises we ON we.id = s.workout_exercise_id
+       JOIN workouts w ON w.id = we.workout_id
        WHERE we.exercise_id = ? AND s.kind = 'working' AND s.completed_at IS NOT NULL AND s.deleted_at IS NULL AND we.deleted_at IS NULL
          AND w.deleted_at IS NULL AND s.id != ? AND (w.status = 'completed' OR w.id = ?)`,
       [we.exercise_id, setId, we.workout_id],
     );
-    // No badges during an exercise's first ever session.
-    const priorSessions = db.get<{ n: number }>(
-      `SELECT count(*) AS n FROM workout_exercises we JOIN workouts w ON w.id = we.workout_id
-       WHERE we.exercise_id = ? AND w.status = 'completed' AND w.deleted_at IS NULL AND we.deleted_at IS NULL`, [we.exercise_id],
-    )!.n;
-    if (priorSessions === 0) return { prs: [] };
-    return { prs: detectSetPrs({ weight_kg: ex.load_type === 'bodyweight' ? null : weight, reps }, history, ex.load_type) };
+    const bySession = new Map<string, { weight_kg: number | null; reps: number | null }[]>();
+    for (const r of rows) (bySession.get(r.workout_id) ?? bySession.set(r.workout_id, []).get(r.workout_id)!).push(r);
+    const earlier = bySession.get(we.workout_id) ?? [];
+    bySession.delete(we.workout_id);
+    const previousBest = Math.max(0, ...[...bySession.values()].map((xs) => sessionVolume(xs, ex.load_type)));
+    return { prs: detectVolumePr({ weight_kg: ex.load_type === 'bodyweight' ? null : weight, reps }, earlier, previousBest, ex.load_type) };
   });
 }
 
@@ -386,8 +387,8 @@ export function getSummary(db: Db, id: string): WorkoutSummary {
      JOIN exercises e ON e.id = we.exercise_id
      WHERE we.workout_id = ? AND s.kind = 'working' AND s.completed_at IS NOT NULL AND s.deleted_at IS NULL AND we.deleted_at IS NULL`, [id],
   );
-  const prRows = db.all<{ exercise_id: string; exercise_name: string; type: PrHit['type']; value: number; weight_kg: number | null; reps: number | null }>(
-    `SELECT p.exercise_id, e.name AS exercise_name, p.type, max(p.value) AS value, p.weight_kg, p.reps
+  const prRows = db.all<{ exercise_id: string; exercise_name: string; load_type: Exercise['load_type']; type: PrHit['type']; value: number; weight_kg: number | null; reps: number | null }>(
+    `SELECT p.exercise_id, e.name AS exercise_name, e.load_type, p.type, max(p.value) AS value, p.weight_kg, p.reps
      FROM personal_records p JOIN exercises e ON e.id = p.exercise_id
      WHERE p.workout_id = ? AND p.baseline = 0 AND p.deleted_at IS NULL
      GROUP BY p.exercise_id, p.type ORDER BY e.name`, [id],
@@ -496,7 +497,13 @@ export function workoutsBetween(db: Db, fromIso: string, toIso: string): { id: s
   );
 }
 
-export function listWorkouts(db: Db, opts: { limit?: number; exerciseId?: string } = {}): WorkoutListRow[] {
+/** Completed workouts, newest first. `fromIso`/`toIso` bound started_at (the UI passes local-day bounds). */
+export function listWorkouts(db: Db, opts: { limit?: number; exerciseId?: string; fromIso?: string; toIso?: string } = {}): WorkoutListRow[] {
+  const params: (string | number)[] = [];
+  if (opts.exerciseId) params.push(opts.exerciseId);
+  if (opts.fromIso) params.push(opts.fromIso);
+  if (opts.toIso) params.push(opts.toIso);
+  params.push(opts.limit ?? 50);
   return db.all<WorkoutListRow>(
     `SELECT w.id, w.name, w.started_at, w.active_duration_sec, w.kcal_estimate,
        (SELECT count(*) FROM sets s JOIN workout_exercises we ON we.id = s.workout_exercise_id
@@ -508,8 +515,9 @@ export function listWorkouts(db: Db, opts: { limit?: number; exerciseId?: string
          WHERE we.workout_id = w.id AND we.deleted_at IS NULL ORDER BY we.sort_order)) AS exercises
      FROM workouts w WHERE w.status = 'completed' AND w.deleted_at IS NULL
      ${opts.exerciseId ? 'AND EXISTS (SELECT 1 FROM workout_exercises we WHERE we.workout_id = w.id AND we.exercise_id = ? AND we.deleted_at IS NULL)' : ''}
+     ${opts.fromIso ? 'AND w.started_at >= ?' : ''} ${opts.toIso ? 'AND w.started_at < ?' : ''}
      ORDER BY w.started_at DESC LIMIT ?`,
-    opts.exerciseId ? [opts.exerciseId, opts.limit ?? 50] : [opts.limit ?? 50],
+    params,
   );
 }
 
