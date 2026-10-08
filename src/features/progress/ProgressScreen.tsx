@@ -11,25 +11,25 @@ import { fmtCompact } from '../../shared/units';
 import { BarChart, CalendarHeatmap, HBars } from '../../ui/charts';
 import { Term } from '../../ui/InfoTip';
 import { Card, Chip, EmptyState, ListRow, Segmented } from '../../ui/primitives';
-import { Screen } from '../../ui/Screen';
 import { useOpenDay } from '../workout/useOpenDay';
 import { StrengthPanel } from './StrengthPanel';
 
-type Tab = 'strength' | 'volume' | 'consistency';
+type View = 'strength' | 'volume' | 'consistency';
 
-export function ProgressScreen() {
+/** Progress (Strength / Volume / Consistency), shown as the third tab of Training. The view lives in ?view=. */
+export function ProgressPanel() {
   const [params, setParams] = useSearchParams();
-  const tab = (params.get('tab') as Tab) || 'strength';
+  const view = (params.get('view') as View) || 'strength';
   return (
-    <Screen title="Progress">
-      <Segmented value={tab} onChange={(v) => setParams({ tab: v }, { replace: true })}
+    <>
+      <Segmented small value={view} onChange={(v) => setParams({ tab: 'progress', view: v }, { replace: true })}
         options={[{ value: 'strength', label: 'Strength' }, { value: 'volume', label: 'Volume' }, { value: 'consistency', label: 'Consistency' }]} />
       <div style={{ marginTop: 16 }}>
-        {tab === 'strength' && <Strength />}
-        {tab === 'volume' && <Volume />}
-        {tab === 'consistency' && <Consistency />}
+        {view === 'strength' && <Strength />}
+        {view === 'volume' && <Volume />}
+        {view === 'consistency' && <Consistency />}
       </div>
-    </Screen>
+    </>
   );
 }
 

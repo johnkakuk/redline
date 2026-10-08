@@ -10,7 +10,7 @@ import { clearSyncState, resetSyncWatermark } from './sync.repo';
 // Insert order respects foreign keys.
 const TABLE_ORDER = [
   'settings', 'exercises', 'routines', 'routine_items', 'workouts', 'progression_state', 'progression_history',
-  'workout_exercises', 'sets', 'personal_records', 'body_weight', 'nutrition_day',
+  'workout_exercises', 'sets', 'personal_records', 'body_weight', 'nutrition_day', 'meals', 'food_log',
 ] as const satisfies readonly (typeof SYNC_TABLES)[number][];
 
 export function exportAll(db: Db): ExportFile {

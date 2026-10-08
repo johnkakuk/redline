@@ -126,7 +126,7 @@ test('core loop: routine → workout → finish → next session progresses and 
   await expect(page.getByText('Swapped to Paused DB Bench Press')).toBeVisible();
   await page.getByRole('button', { name: 'Done' }).click();
 
-  await page.getByRole('link', { name: 'Routines' }).click();
+  await page.getByRole('link', { name: 'Training' }).click();
   await page.getByRole('button', { name: /^Push A/ }).click();
   await expect(page.locator('.item-card').getByText('Paused DB Bench Press')).toBeVisible();
   expect(errors).toEqual([]);
@@ -251,7 +251,7 @@ test('routine editor: create an exercise mid-edit without losing anything; picks
   // Unsaved edits survive leaving the editor, and Cancel asks before throwing them away.
   await page.getByPlaceholder('Upper A · Push').fill('Push day v2');
   await page.getByRole('link', { name: 'Today' }).click();
-  await page.getByRole('link', { name: 'Routines' }).click();
+  await page.getByRole('link', { name: 'Training' }).click();
   await page.getByRole('button', { name: /^Push day/ }).click();
   await expect(page.getByText('Restored your unsaved changes.')).toBeVisible();
   await expect(page.getByPlaceholder('Upper A · Push')).toHaveValue('Push day v2');
@@ -304,7 +304,7 @@ test('Today week strip: swipe back one week only, today stays marked, snaps back
   // Snaps back to this week after leaving Today.
   await swipe(150);
   await expect(strip).toHaveAttribute('aria-label', /^Last week/);
-  await page.getByRole('link', { name: 'Progress' }).click();
+  await page.getByRole('link', { name: 'Nutrition' }).click();
   await page.getByRole('link', { name: 'Today' }).click();
   await expect(page.locator('.week-viewport')).toHaveAttribute('aria-label', /^This week/);
 });
@@ -358,32 +358,76 @@ test('Day screen: log nutrition and bodyweight for a past day', async ({ page })
   await expect(page).toHaveURL(/\/day\//);
   await expect(page.getByText('Rest day. No workout logged.')).toBeVisible();
 
+  // Quick-add food for that day (system keyboard is fine outside a workout).
   await page.getByRole('button', { name: 'Calories' }).click();
-  await keys(page, '2400');
-  await sheet(page).getByRole('button', { name: 'Done' }).click();
-  await page.getByRole('button', { name: 'Protein' }).click();
-  await keys(page, '180');
-  await sheet(page).getByRole('button', { name: 'Done' }).click();
+  await sheet(page).getByRole('tab', { name: 'Quick add' }).click();
+  await sheet(page).getByPlaceholder('Snack').fill('Burrito');
+  await sheet(page).getByPlaceholder('kcal').fill('2400');
+  await sheet(page).getByPlaceholder('g').fill('180');
+  await sheet(page).getByRole('button', { name: 'Log', exact: true }).click();
   await page.getByRole('button', { name: 'Bodyweight' }).click();
   await keys(page, '182.5');
   await sheet(page).getByRole('button', { name: 'Done' }).click();
   await expect(page.getByRole('button', { name: 'Calories' })).toContainText('2400');
   await expect(page.getByRole('button', { name: 'Protein' })).toContainText('180');
   await expect(page.getByRole('button', { name: 'Bodyweight' })).toContainText('182.5');
+  await expect(page.getByRole('button', { name: /^Burrito/ })).toBeVisible();
 
   // It's that day's data, not today's.
   await page.getByRole('button', { name: 'Back' }).click();
   await expect(page.locator('.quick').getByText('2400')).toHaveCount(0);
-  // Clearing a value removes it.
+  // Deleting the entry removes it from the day's totals.
   await page.goForward();
   await expect(page).toHaveURL(/\/day\//);
-  await page.getByRole('button', { name: 'Calories' }).click();
-  await page.getByRole('button', { name: 'Delete' }).click();
-  await page.getByRole('button', { name: 'Delete' }).click();
-  await page.getByRole('button', { name: 'Delete' }).click();
-  await page.getByRole('button', { name: 'Delete' }).click();
-  await sheet(page).getByRole('button', { name: 'Done' }).click();
+  await page.getByRole('button', { name: /^Burrito/ }).click();
+  await page.locator('.sheet').getByRole('button', { name: 'Delete' }).click();
   await expect(page.getByRole('button', { name: 'Calories' })).not.toContainText('2400');
+});
+
+test('Nutrition: saved meals, servings, quick add saved as a meal, totals, targets', async ({ page }) => {
+  await onboard(page);
+  await page.getByRole('link', { name: 'Nutrition' }).click();
+  await expect(page.getByRole('heading', { name: 'Nutrition' })).toBeVisible();
+  await expect(page.getByText('Nothing logged yet today.')).toBeVisible();
+
+  // Set a calorie target from the ring.
+  await page.getByRole('button', { name: /^Calories 0\. Set target/ }).click();
+  await keys(page, '2500');
+  await sheet(page).getByRole('button', { name: 'Done' }).click();
+  await expect(page.getByText('2500 kcal left')).toBeVisible();
+
+  // Create a saved meal.
+  await page.getByRole('button', { name: 'New meal' }).click();
+  await sheet(page).getByPlaceholder('Chicken rice bowl').fill('Chicken bowl');
+  await sheet(page).getByPlaceholder('kcal').fill('640');
+  await sheet(page).getByPlaceholder('g').fill('52');
+  await sheet(page).getByRole('button', { name: 'Save' }).click();
+  await expect(page.getByRole('button', { name: 'Edit Chicken bowl' })).toBeVisible();
+
+  // Log it with 1.5 servings from the Log food sheet.
+  await page.locator('.card .btn.primary', { hasText: 'Log food' }).click();
+  await sheet(page).getByRole('button', { name: /^Chicken bowl/ }).click();
+  await sheet(page).getByRole('button', { name: 'Increase servings' }).click();
+  await expect(sheet(page).getByText('960 kcal · 78 g protein')).toBeVisible();
+  await sheet(page).getByRole('button', { name: 'Log Chicken bowl' }).click();
+  await expect(page.getByText('1540 kcal left')).toBeVisible();
+
+  // Quick add, saved as a meal for next time.
+  await page.locator('.card .btn.primary', { hasText: 'Log food' }).click();
+  await sheet(page).getByRole('tab', { name: 'Quick add' }).click();
+  await sheet(page).getByPlaceholder('Snack').fill('Protein shake');
+  await sheet(page).getByPlaceholder('kcal').fill('160');
+  await sheet(page).getByPlaceholder('g').fill('30');
+  await sheet(page).getByRole('switch', { name: 'Save as a meal' }).click();
+  await sheet(page).getByRole('button', { name: 'Log', exact: true }).click();
+  await expect(page.getByText('1380 kcal left')).toBeVisible();
+  // One-tap log from the saved list.
+  await page.getByRole('button', { name: 'Log Protein shake' }).click();
+  await expect(page.getByText('1220 kcal left')).toBeVisible();
+
+  // Today's quick-log tile shows the total.
+  await page.getByRole('link', { name: 'Today' }).click();
+  await expect(page.locator('.quick')).toContainText('1280');
 });
 
 test('rest timer keeps counting in red after it runs out', async ({ page }) => {

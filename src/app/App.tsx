@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { Activity, Dumbbell, Scale, Settings as SettingsIcon, TrendingUp, TriangleAlert, X } from 'lucide-react';
+import { Activity, Dumbbell, Scale, Settings as SettingsIcon, TriangleAlert, Utensils, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { BrowserRouter, Navigate, NavLink, Outlet, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
 import { db } from '../db/client';
@@ -9,7 +9,7 @@ import { DayScreen } from '../features/day/DayScreen';
 import { ExerciseDetailScreen } from '../features/exercises/ExerciseDetail';
 import { ExerciseFormScreen } from '../features/exercises/ExerciseForm';
 import { Onboarding } from '../features/onboarding/Onboarding';
-import { ProgressScreen } from '../features/progress/ProgressScreen';
+import { NutritionScreen } from '../features/nutrition/NutritionScreen';
 import { RoutineEditor } from '../features/routines/RoutineEditor';
 import { RoutinesScreen } from '../features/routines/RoutinesScreen';
 import { SettingsScreen } from '../features/settings/SettingsScreen';
@@ -23,8 +23,8 @@ import { useActiveWorkoutId, useSettings } from './queries';
 
 const TABS = [
   { to: '/', label: 'Today', icon: Activity, end: true },
-  { to: '/routines', label: 'Routines', icon: Dumbbell },
-  { to: '/progress', label: 'Progress', icon: TrendingUp },
+  { to: '/routines', label: 'Training', icon: Dumbbell },
+  { to: '/nutrition', label: 'Nutrition', icon: Utensils },
   { to: '/body', label: 'Body', icon: Scale },
   { to: '/settings', label: 'Settings', icon: SettingsIcon },
 ];
@@ -58,6 +58,13 @@ function ResumePill() {
       <span style={{ fontWeight: 600 }}>Resume</span>
     </button>
   );
+}
+
+/** Old /progress links land on Training → Progress (keeping ?tab=strength|volume|consistency as the view). */
+function ProgressRedirect() {
+  const { search } = useLocation();
+  const view = new URLSearchParams(search).get('tab');
+  return <Navigate to={`/routines?tab=progress${view ? `&view=${view}` : ''}`} replace />;
 }
 
 function TabLayout() {
@@ -119,7 +126,8 @@ export function App() {
             <Route path="/routines/:id" element={<RoutineEditor />} />
             <Route path="/exercises/:id" element={<ExerciseDetailScreen />} />
             <Route path="/exercises/:id/edit" element={<ExerciseFormScreen />} />
-            <Route path="/progress" element={<ProgressScreen />} />
+            <Route path="/progress" element={<ProgressRedirect />} />
+            <Route path="/nutrition" element={<NutritionScreen />} />
             <Route path="/history/:id" element={<SummaryScreen history />} />
             <Route path="/day/:date" element={<DayScreen />} />
             <Route path="/body" element={<BodyScreen />} />

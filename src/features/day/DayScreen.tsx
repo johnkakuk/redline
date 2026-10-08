@@ -5,10 +5,13 @@ import { act, useSettings, useUnits } from '../../app/queries';
 import { db } from '../../db/client';
 import { addDays, fmtDay, localDate, parseLocalDate, workoutMeta } from '../../shared/time';
 import { KeypadSheet } from '../../ui/Keypad';
-import { ListRow } from '../../ui/primitives';
+import { Plus } from 'lucide-react';
+import { Button, ListRow } from '../../ui/primitives';
+import { FoodLogList } from '../nutrition/FoodLogList';
+import { LogFoodSheet } from '../nutrition/LogFoodSheet';
 import { PushScreen } from '../../ui/Screen';
 
-type Edit = null | 'calories' | 'protein' | 'bodyweight';
+type Edit = null | 'food' | 'bodyweight';
 
 /** One calendar day: nutrition and bodyweight (editable) and the workouts logged that day. */
 export function DayScreen() {
@@ -37,9 +40,6 @@ export function DayScreen() {
   const bw = data?.bodyweight;
   const workouts = [...(data?.workouts ?? [])].reverse(); // morning first
 
-  const saveNutrition = async (field: 'calories' | 'protein_g', v: number | null) => {
-    await act(db.upsertNutrition(date, field === 'calories' ? { calories: v } : { protein_g: v }));
-  };
   const saveBodyweight = async (v: number | null) => {
     if (v == null || v <= 0) { if (bw) await act(db.deleteBodyweight(bw.id)); return; }
     if (bw) await act(db.updateBodyweight(bw.id, { date, weight_kg: toKg(v)!, note: bw.note }));
@@ -52,14 +52,14 @@ export function DayScreen() {
       {date !== today && <div className="caption" style={{ marginTop: 4 }}>{fmtDay(date, { year: 'numeric', month: 'long', day: 'numeric' })}</div>}
 
       <div className="section">
-        <div className="section-label"><span className="micro">Nutrition</span><span className="caption">Tap to log</span></div>
+        <div className="section-label"><span className="micro">Nutrition</span><span className="caption">Tap to log food</span></div>
         <div className="quick" style={{ gridTemplateColumns: '1fr 1fr 1fr' }}>
-          <button type="button" onClick={() => setEdit('calories')} aria-label="Calories">
+          <button type="button" onClick={() => setEdit('food')} aria-label="Calories">
             <span className="micro">Calories</span>
             <span className={`num ${n?.calories == null ? 'placeholder' : ''}`}>{n?.calories ?? '—'}</span>
             {settings?.calorie_target ? <span className="caption">of {settings.calorie_target}</span> : null}
           </button>
-          <button type="button" onClick={() => setEdit('protein')} aria-label="Protein">
+          <button type="button" onClick={() => setEdit('food')} aria-label="Protein">
             <span className="micro">Protein</span>
             <span className={`num ${n?.protein_g == null ? 'placeholder' : ''}`}>{n?.protein_g ?? '—'}{n?.protein_g != null && <span className="unit">g</span>}</span>
             {settings?.protein_target_g ? <span className="caption">of {settings.protein_target_g} g</span> : null}
@@ -69,6 +69,14 @@ export function DayScreen() {
             <span className={`num ${bw ? '' : 'placeholder'}`}>{bw ? <>{w(bw.weight_kg)}<span className="unit">{units}</span></> : '—'}</span>
           </button>
         </div>
+      </div>
+
+      <div className="section">
+        <div className="section-label">
+          <span className="micro">Food</span>
+          <Button variant="ghost" size="sm" onClick={() => setEdit('food')}><Plus size={16} />Log food</Button>
+        </div>
+        <FoodLogList date={date} empty="Nothing logged this day." />
       </div>
 
       <div className="section">
@@ -85,12 +93,7 @@ export function DayScreen() {
         )}
       </div>
 
-      <KeypadSheet open={edit === 'calories'} title="Calories" subtitle={title} nextLabel="Save" onClose={() => setEdit(null)}
-        fields={[{ key: 'v', label: 'kcal · empty clears', unit: 'kcal', value: n?.calories ?? null, step: 100 }]}
-        onDone={(v) => { setEdit(null); void saveNutrition('calories', v.v); }} />
-      <KeypadSheet open={edit === 'protein'} title="Protein" subtitle={title} nextLabel="Save" onClose={() => setEdit(null)}
-        fields={[{ key: 'v', label: 'grams · empty clears', unit: 'g', value: n?.protein_g ?? null, step: 10 }]}
-        onDone={(v) => { setEdit(null); void saveNutrition('protein_g', v.v); }} />
+      <LogFoodSheet open={edit === 'food'} onClose={() => setEdit(null)} date={date} />
       <KeypadSheet open={edit === 'bodyweight'} title="Bodyweight" subtitle={title} nextLabel="Save" onClose={() => setEdit(null)}
         fields={[{ key: 'v', label: 'Bodyweight · empty clears', unit: units, decimals: true, value: bw ? toDisplay(bw.weight_kg) : null, step: units === 'lb' ? 0.5 : 0.1 }]}
         onDone={(v) => { setEdit(null); void saveBodyweight(v.v); }} />

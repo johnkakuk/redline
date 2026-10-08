@@ -1,4 +1,4 @@
-import type { BodyWeightEntry, NutritionDay } from '../../shared/types';
+import type { BodyWeightEntry } from '../../shared/types';
 import type { Db } from '../sqlite';
 import { newId, now } from './common';
 
@@ -27,32 +27,6 @@ export function listBodyweight(db: Db, sinceDate?: string): BodyWeightEntry[] {
   return db.all<BodyWeightEntry>(
     `SELECT id, date, weight_kg, note, created_at FROM body_weight WHERE deleted_at IS NULL ${sinceDate ? 'AND date >= ?' : ''}
      ORDER BY date, created_at`,
-    sinceDate ? [sinceDate] : [],
-  );
-}
-
-export function getNutrition(db: Db, date: string): NutritionDay | null {
-  return db.get<NutritionDay>('SELECT id, date, calories, protein_g FROM nutrition_day WHERE date = ? AND deleted_at IS NULL', [date]) ?? null;
-}
-
-export function upsertNutrition(db: Db, date: string, v: { calories?: number | null; protein_g?: number | null }) {
-  const existing = db.get<{ id: string; calories: number | null; protein_g: number | null }>('SELECT id, calories, protein_g FROM nutrition_day WHERE date = ?', [date]);
-  const calories = v.calories !== undefined ? v.calories : existing?.calories ?? null;
-  const protein = v.protein_g !== undefined ? v.protein_g : existing?.protein_g ?? null;
-  if (existing) {
-    db.run('UPDATE nutrition_day SET calories = ?, protein_g = ?, deleted_at = NULL WHERE id = ?', [calories, protein, existing.id]);
-  } else {
-    db.run('INSERT INTO nutrition_day (id, date, calories, protein_g) VALUES (?,?,?,?)', [newId(), date, calories, protein]);
-  }
-}
-
-export function deleteNutrition(db: Db, date: string) {
-  db.run('UPDATE nutrition_day SET deleted_at = ? WHERE date = ?', [now(), date]);
-}
-
-export function listNutrition(db: Db, sinceDate?: string): NutritionDay[] {
-  return db.all<NutritionDay>(
-    `SELECT id, date, calories, protein_g FROM nutrition_day WHERE deleted_at IS NULL ${sinceDate ? 'AND date >= ?' : ''} ORDER BY date`,
     sinceDate ? [sinceDate] : [],
   );
 }

@@ -36,7 +36,7 @@ beforeEach(() => {
 
 describe('boot', () => {
   it('migrates, seeds ~100 exercises with linked variation chains', () => {
-    expect(api.boot().schemaVersion).toBe(6);
+    expect(api.boot().schemaVersion).toBe(7);
     expect(api.listExercises().length).toBeGreaterThan(80);
     const push = ex('Push-up');
     expect(push.harder_variation_id).toBe(ex('Decline Push-up').id);
@@ -498,13 +498,60 @@ describe('analytics', () => {
 });
 
 describe('body', () => {
-  it('bodyweight + nutrition', () => {
+  it('bodyweight', () => {
     api.logBodyweight({ date: '2026-10-01', weight_kg: 80 });
     api.logBodyweight({ date: '2026-10-02', weight_kg: 79.5 });
     expect(api.latestBodyweightKg()).toBe(79.5);
-    api.upsertNutrition('2026-10-02', { calories: 2400 });
-    api.upsertNutrition('2026-10-02', { protein_g: 180 });
-    expect(api.getNutrition('2026-10-02')).toMatchObject({ calories: 2400, protein_g: 180 });
+  });
+});
+
+describe('nutrition', () => {
+  it('saved meals log with servings; quick add; totals are the sum of the day', () => {
+    const bowl = api.saveMeal({ name: 'Chicken bowl', calories: 640, protein_g: 52 });
+    api.logFood({ date: '2026-10-08', meal_id: bowl });
+    api.logFood({ date: '2026-10-08', meal_id: bowl, servings: 1.5 });
+    api.logFood({ date: '2026-10-08', name: 'Protein shake', calories: 160, protein_g: 30 });
+    api.logFood({ date: '2026-10-07', calories: 500 });
+    const day = api.listFood('2026-10-08');
+    expect(day.map((e) => [e.name, e.servings, e.calories, e.protein_g])).toEqual([
+      ['Chicken bowl', 1, 640, 52],
+      ['Chicken bowl', 1.5, 960, 78],
+      ['Protein shake', 1, 160, 30],
+    ]);
+    expect(api.getNutrition('2026-10-08')).toEqual({ date: '2026-10-08', calories: 1760, protein_g: 160, entries: 3 });
+    expect(api.getNutrition('2026-10-06')).toBeNull();
+    expect(api.listNutrition('2026-10-01').map((d) => [d.date, d.calories])).toEqual([['2026-10-07', 500], ['2026-10-08', 1760]]);
+  });
+
+  it('edit and delete entries; meals sort by most recently used; deleting a meal keeps its log', () => {
+    const a = api.saveMeal({ name: 'Oats', calories: 380, protein_g: 14 });
+    const b = api.saveMeal({ name: 'Burrito', calories: 900, protein_g: 40 });
+    const e = api.logFood({ date: '2026-10-08', meal_id: b });
+    expect(api.listMeals().map((m) => [m.name, m.uses])).toEqual([['Burrito', 1], ['Oats', 0]]);
+    api.updateFood(e, { calories: 1000 });
+    expect(api.getNutrition('2026-10-08')?.calories).toBe(1000);
+    api.deleteMeal(b);
+    expect(api.listMeals().map((m) => m.name)).toEqual(['Oats']);
+    expect(api.listFood('2026-10-08')[0].name).toBe('Burrito');
+    api.deleteFood(e);
+    expect(api.getNutrition('2026-10-08')).toBeNull();
+    void a;
+  });
+
+  it('rejects empty entries and nameless meals', () => {
+    expect(() => api.logFood({ date: '2026-10-08' })).toThrow(/calories or protein/);
+    expect(() => api.saveMeal({ name: ' ', calories: 100, protein_g: null })).toThrow(/name/);
+  });
+
+  it('migration 007 turns old daily totals into a "Daily total" entry', () => {
+    const raw = wrapDb(new sqlite3.oo1.DB(':memory:', 'c') as unknown as Oo1Db);
+    for (const m of MIGRATIONS.filter((x) => x.version <= 6)) raw.exec(m.sql);
+    raw.run(`INSERT INTO nutrition_day (id, date, calories, protein_g) VALUES ('n1', '2026-10-01', 2300, 170)`);
+    raw.exec(MIGRATIONS.find((x) => x.version === 7)!.sql);
+    expect(raw.all(`SELECT id, date, name, calories, protein_g FROM food_log`)).toEqual([
+      { id: 'nd-n1', date: '2026-10-01', name: 'Daily total', calories: 2300, protein_g: 170 },
+    ]);
+    expect(raw.get<{ n: number }>(`SELECT count(*) AS n FROM nutrition_day WHERE deleted_at IS NULL`)!.n).toBe(0);
   });
 });
 

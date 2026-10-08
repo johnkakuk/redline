@@ -4,6 +4,7 @@ import * as analytics from './repos/analytics.repo';
 import * as body from './repos/body.repo';
 import * as data from './repos/data.repo';
 import * as exercises from './repos/exercises.repo';
+import * as nutrition from './repos/nutrition.repo';
 import * as programs from './repos/programs.repo';
 import * as routines from './repos/routines.repo';
 import * as settings from './repos/settings.repo';
@@ -11,7 +12,7 @@ import * as sync from './repos/sync.repo';
 import * as workouts from './repos/workouts.repo';
 import type { Db } from './sqlite';
 
-const modules = { analytics, body, data, exercises, programs, routines, settings, sync, workouts };
+const modules = { analytics, body, data, exercises, nutrition, programs, routines, settings, sync, workouts };
 
 type Bound<M> = {
   [K in keyof M as M[K] extends (db: Db, ...a: never[]) => unknown ? K : never]: M[K] extends (db: Db, ...a: infer A) => infer R

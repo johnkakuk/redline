@@ -506,3 +506,12 @@ button.day:active { background: var(--bg-2); }
 .rest-bar.over .btn.ghost { color: var(--text-on-red); }
 .rest-bar.over .btn.ghost:active { background: rgba(255, 255, 255, 0.15); }
 .rest-bar.over .progress { display: none; }
+
+/* Nutrition */
+.day-nav { display: flex; align-items: center; justify-content: space-between; margin-bottom: var(--s-3); }
+.day-nav-label { font-weight: var(--fw-semibold); font-size: var(--fs-body); padding: var(--s-2) var(--s-3); border-radius: var(--r-sm); }
+.day-nav-label:active { background: var(--bg-2); }
+.ring-btn { display: flex; justify-content: center; padding: var(--s-1) 0; border-radius: var(--r-md); }
+.ring-btn:active { background: var(--bg-2); }
+.ring-btn .ring-wrap { gap: 4px; }
+.ring-btn .ring-wrap > .micro { margin-top: 4px; }

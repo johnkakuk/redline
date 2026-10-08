@@ -11,19 +11,28 @@ import { Screen } from '../../ui/Screen';
 import { SortableList } from '../../ui/Sortable';
 import { ExerciseFilters, useExerciseFilters } from '../exercises/ExercisePicker';
 import { StarterProgramSheet } from '../onboarding/equipment';
+import { ProgressPanel } from '../progress/ProgressScreen';
 
+type Tab = 'routines' | 'exercises' | 'progress';
+
+/** Training: routines, the exercise library and progress, in one tab. */
 export function RoutinesScreen() {
   const [params, setParams] = useSearchParams();
-  const tab = params.get('tab') === 'exercises' ? 'exercises' : 'routines';
+  const raw = params.get('tab');
+  const tab: Tab = raw === 'exercises' || raw === 'progress' ? raw : 'routines';
   const nav = useNavigate();
   return (
-    <Screen title={tab === 'routines' ? 'Routines' : 'Exercises'} action={
+    <Screen title="Training" action={tab !== 'progress' && (
       <button type="button" className="icon-btn" style={{ color: 'var(--red-400)' }} aria-label={tab === 'routines' ? 'New routine' : 'New exercise'}
         onClick={() => nav(tab === 'routines' ? '/routines/new' : '/exercises/new/edit')}><Plus size={26} /></button>
-    }>
-      <Segmented value={tab} options={[{ value: 'routines', label: 'Routines' }, { value: 'exercises', label: 'Exercises' }]}
-        onChange={(v) => setParams(v === 'exercises' ? { tab: v } : {}, { replace: true })} />
-      <div style={{ marginTop: 16 }}>{tab === 'routines' ? <RoutineList /> : <ExerciseLibrary />}</div>
+    )}>
+      <Segmented value={tab} options={[{ value: 'routines', label: 'Routines' }, { value: 'exercises', label: 'Exercises' }, { value: 'progress', label: 'Progress' }]}
+        onChange={(v) => setParams(v === 'routines' ? {} : { tab: v }, { replace: true })} />
+      <div style={{ marginTop: 16 }}>
+        {tab === 'routines' && <RoutineList />}
+        {tab === 'exercises' && <ExerciseLibrary />}
+        {tab === 'progress' && <ProgressPanel />}
+      </div>
     </Screen>
   );
 }

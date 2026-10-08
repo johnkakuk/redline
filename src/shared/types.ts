@@ -200,4 +200,14 @@ export interface WorkoutSummary {
 }
 
 export interface BodyWeightEntry { id: string; date: string; weight_kg: number; note: string | null; created_at: string }
-export interface NutritionDay { id: string; date: string; calories: number | null; protein_g: number | null }
+/** A day's nutrition totals (sum of its food log). */
+export interface NutritionDay { date: string; calories: number | null; protein_g: number | null; entries: number }
+
+/** A saved, reusable meal (per serving). */
+export interface Meal { id: string; name: string; calories: number | null; protein_g: number | null; last_used_at: string | null; uses: number }
+
+/** One thing eaten on a day. Calories/protein are totals for the entry (already × servings). */
+export interface FoodEntry {
+  id: string; date: string; logged_at: string; meal_id: string | null; name: string | null;
+  servings: number; calories: number | null; protein_g: number | null;
+}

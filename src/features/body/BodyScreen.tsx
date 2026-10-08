@@ -1,11 +1,11 @@
 import { useQuery } from '@tanstack/react-query';
 import { Pencil, Plus, Trash2 } from 'lucide-react';
 import { useMemo, useState } from 'react';
-import { act, useSettings, useUnits } from '../../app/queries';
+import { act, useUnits } from '../../app/queries';
 import { db } from '../../db/client';
 import { addDays, fmtDay, localDate, parseLocalDate } from '../../shared/time';
 import type { BodyWeightEntry } from '../../shared/types';
-import { BarChart, LineChart, Ring } from '../../ui/charts';
+import { LineChart } from '../../ui/charts';
 import { KeypadSheet } from '../../ui/Keypad';
 import { Card, EmptyState, ListRow, Segmented } from '../../ui/primitives';
 import { Screen } from '../../ui/Screen';
@@ -28,17 +28,12 @@ const rangeDays: Record<Range, number | null> = { '1M': 30, '3M': 91, '6M': 182,
 
 export function BodyScreen() {
   const { w, units, toDisplay, toKg } = useUnits();
-  const settings = useSettings().data;
   const [range, setRange] = useState<Range>('3M');
   const [sel, setSel] = useState<number | null>(null);
-  const [nutriView, setNutriView] = useState<'calories' | 'protein'>('calories');
   const [edit, setEdit] = useState<null | { entry?: BodyWeightEntry }>(null);
   const [menuFor, setMenuFor] = useState<BodyWeightEntry | null>(null);
-  const [logN, setLogN] = useState<null | 'calories' | 'protein'>(null);
-  const today = localDate();
   const since = rangeDays[range] ? localDate(addDays(new Date(), -rangeDays[range]!)) : undefined;
   const all = useQuery({ queryKey: ['bodyweight', 'all'], queryFn: () => db.listBodyweight() }).data ?? [];
-  const nutrition = useQuery({ queryKey: ['nutrition', 'last30'], queryFn: () => db.listNutrition(localDate(addDays(new Date(), -29))) }).data ?? [];
 
   const ma = useMemo(() => movingAverage(all), [all]);
   const inRange = (d: string) => !since || d >= since;
@@ -47,13 +42,7 @@ export function BodyScreen() {
   const pts = maR.map((p) => ({ x: parseLocalDate(p.date).getTime(), y: toDisplay(p.value) ?? 0 }));
   const shown = sel != null ? maR[sel] : maR.at(-1);
   const change = maR.length > 1 ? maR.at(-1)!.value - maR[0].value : 0;
-  const todayN = nutrition.find((n) => n.date === today);
 
-  const nutriBars = Array.from({ length: 30 }, (_, i) => {
-    const d = localDate(addDays(new Date(), i - 29));
-    const n = nutrition.find((x) => x.date === d);
-    return { label: i % 5 === 4 ? fmtDay(d, { month: 'numeric', day: 'numeric' }) : '', value: (nutriView === 'calories' ? n?.calories : n?.protein_g) ?? 0, on: d === today };
-  });
 
   return (
     <Screen title="Body" action={
@@ -81,30 +70,6 @@ export function BodyScreen() {
         <div className="range"><Segmented small value={range} options={RANGES} onChange={(r) => { setRange(r); setSel(null); }} /></div>
       </Card>
 
-      <div className="section">
-        <div className="section-label"><span className="micro">Nutrition · today</span></div>
-        <div className="stats two">
-          <button type="button" className="stat" onClick={() => setLogN('calories')} style={{ textAlign: 'center' }}>
-            <Ring value={todayN?.calories ?? 0} max={settings?.calorie_target ?? 2500} size={104}
-              center={<><span className="num" style={{ fontSize: 26 }}>{todayN?.calories ?? '—'}</span><span className="caption">/ {settings?.calorie_target ?? '—'}</span></>}
-              label={<span className="micro">Calories</span>} />
-          </button>
-          <button type="button" className="stat" onClick={() => setLogN('protein')} style={{ textAlign: 'center' }}>
-            <Ring value={todayN?.protein_g ?? 0} max={settings?.protein_target_g ?? 150} size={104}
-              center={<><span className="num" style={{ fontSize: 26 }}>{todayN?.protein_g ?? '—'}{todayN?.protein_g != null && <span className="unit">g</span>}</span><span className="caption">/ {settings?.protein_target_g ?? '—'}</span></>}
-              label={<span className="micro">Protein</span>} />
-          </button>
-        </div>
-        {(!settings?.calorie_target || !settings?.protein_target_g) && <div className="caption" style={{ marginTop: 8 }}>Set daily targets in Settings.</div>}
-      </div>
-
-      <Card className="section" label="Last 30 days" action={
-        <div style={{ width: 170 }}><Segmented small value={nutriView} onChange={setNutriView} options={[{ value: 'calories', label: 'kcal' }, { value: 'protein', label: 'Protein' }]} /></div>
-      }>
-        <BarChart bars={nutriBars} height={120} target={(nutriView === 'calories' ? settings?.calorie_target : settings?.protein_target_g) ?? undefined}
-          formatY={(v) => (v >= 1000 ? `${(v / 1000).toFixed(1)}k` : String(v))} />
-      </Card>
-
       {all.length > 0 && (
         <div className="section">
           <div className="section-label"><span className="micro">Log</span></div>
@@ -125,11 +90,6 @@ export function BodyScreen() {
 
       <BodyweightSheet edit={edit} onClose={() => setEdit(null)} units={units} toDisplay={toDisplay} toKg={toKg} latest={all.at(-1)?.weight_kg ?? null} />
 
-      <KeypadSheet open={logN != null} title={logN === 'calories' ? 'Calories today' : 'Protein today'} nextLabel="Save" onClose={() => setLogN(null)}
-        fields={[logN === 'calories'
-          ? { key: 'v', label: 'kcal', unit: 'kcal', value: todayN?.calories ?? null, step: 100 }
-          : { key: 'v', label: 'grams', unit: 'g', value: todayN?.protein_g ?? null, step: 10 }]}
-        onDone={async (v) => { const k = logN; setLogN(null); await act(db.upsertNutrition(today, k === 'calories' ? { calories: v.v } : { protein_g: v.v })); }} />
     </Screen>
   );
 }

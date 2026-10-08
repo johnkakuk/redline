@@ -15,6 +15,7 @@ import { toast } from '../../ui/toast';
 import { StarterProgramSheet } from '../onboarding/equipment';
 import { useOpenDay } from '../workout/useOpenDay';
 import { WeekStrip } from './WeekStrip';
+import { LogFoodSheet } from '../nutrition/LogFoodSheet';
 
 export function TodayScreen() {
   const nav = useNavigate();
@@ -28,7 +29,7 @@ export function TodayScreen() {
   const prs = useQuery({ queryKey: ['recentPrs', 7], queryFn: () => db.recentPrs({ sinceIso: addDays(new Date(), -7).toISOString(), limit: 8 }) }).data ?? [];
   const bw = useQuery({ queryKey: ['latestBw'], queryFn: () => db.latestBodyweightKg() }).data ?? null;
   const nutrition = useQuery({ queryKey: ['nutrition', today], queryFn: () => db.getNutrition(today) }).data;
-  const [log, setLog] = useState<null | 'bw' | 'cal' | 'protein'>(null);
+  const [log, setLog] = useState<null | 'bw' | 'food'>(null);
   const [starter, setStarter] = useState(false);
   const day = useOpenDay();
 
@@ -92,11 +93,11 @@ export function TodayScreen() {
             <span className="micro">Weight</span>
             <span className={`num ${bw == null ? 'placeholder' : ''}`}>{bw == null ? '—' : <>{w(bw)}<span className="unit">{units}</span></>}</span>
           </button>
-          <button type="button" onClick={() => setLog('cal')}>
+          <button type="button" onClick={() => setLog('food')} aria-label="Log food (calories)">
             <span className="micro">Calories</span>
             <span className={`num ${nutrition?.calories == null ? 'placeholder' : ''}`}>{nutrition?.calories ?? '—'}</span>
           </button>
-          <button type="button" onClick={() => setLog('protein')}>
+          <button type="button" onClick={() => setLog('food')} aria-label="Log food (protein)">
             <span className="micro">Protein</span>
             <span className={`num ${nutrition?.protein_g == null ? 'placeholder' : ''}`}>{nutrition?.protein_g ?? '—'}{nutrition?.protein_g != null && <span className="unit">g</span>}</span>
           </button>
@@ -124,12 +125,7 @@ export function TodayScreen() {
           setLog(null);
           if (v.v != null && v.v > 0) { await act(db.logBodyweight({ date: today, weight_kg: toKg(v.v)! })); toast('Bodyweight logged', 'success'); }
         }} />
-      <KeypadSheet open={log === 'cal'} title="Calories" subtitle={fmtDay(today)} onClose={() => setLog(null)} nextLabel="Save"
-        fields={[{ key: 'v', label: settings?.calorie_target ? `Target ${settings.calorie_target}` : 'kcal', unit: 'kcal', value: nutrition?.calories ?? null, step: 100 }]}
-        onDone={async (v) => { setLog(null); await act(db.upsertNutrition(today, { calories: v.v })); }} />
-      <KeypadSheet open={log === 'protein'} title="Protein" subtitle={fmtDay(today)} onClose={() => setLog(null)} nextLabel="Save"
-        fields={[{ key: 'v', label: settings?.protein_target_g ? `Target ${settings.protein_target_g} g` : 'grams', unit: 'g', value: nutrition?.protein_g ?? null, step: 10 }]}
-        onDone={async (v) => { setLog(null); await act(db.upsertNutrition(today, { protein_g: v.v })); }} />
+      <LogFoodSheet open={log === 'food'} onClose={() => setLog(null)} date={today} />
     </Screen>
   );
 }
